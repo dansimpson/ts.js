@@ -2,7 +2,7 @@ require "../ts.coffee"
 
 runner.describe "$ts"
 
-runner.test "instantisate", () ->
+runner.test "instantiate", () ->
   runner.assertNotNull $ts([[0, 1], [1, 1]])
 
 runner.test "index data", () ->
@@ -15,7 +15,7 @@ runner.test "index data", () ->
 
 runner.describe "timeseries"
 
-time = new Date().getTime()
+time = 0
 data = $ts().index([1, 2, 3, 6, 4, 4, 4], time)
 ts   = $ts(data)
 

@@ -17,8 +17,6 @@ else
 ###
 class Timeseries
   constructor: (@data) ->
-    if @data.length == 0
-      throw "Timeseries requires at least 1 data point"
 
   # the number of samples
   size: () -> 
@@ -191,20 +189,26 @@ class Timeseries
     sum
 
   # finds the nearest index in the domain using
-  # a naive search against timestamps
-  # todo: binary search
+  # a binary search
   nearest: (timestamp) ->
-    idx = 0
-    while idx < @size() && @data[idx][0] < timestamp
-      idx++
-    if idx >= @size()
-      idx = @size() - 1
-    if idx > 0
-      d1 = @data[idx][0] - timestamp
-      d2 = @data[idx - 1][0] - timestamp
-      if Math.abs(d1) > Math.abs(d2)
-        idx -= 1
-    idx
+    @bsearch(timestamp, 0, @size() - 1)
+
+  # binary search for a timestamp with some fuzzy
+  # matching if we don't get the exact idx
+  bsearch: (timestamp, idx1, idx2) ->
+    mid = Math.floor((idx2 - idx1) / 2.0) + idx1
+    if idx1 == mid || idx2 == mid
+      d1 = @time(idx1) - timestamp
+      d2 = @time(idx2) - timestamp
+      if Math.abs(d2) > Math.abs(d1)
+        return idx1
+      else
+        return idx2
+    if timestamp < @time(mid)
+      return @bsearch timestamp, idx1, mid
+    else if timestamp > @time(mid)
+      return @bsearch timestamp, mid, idx2
+    return mid
 
 
   # report
@@ -219,10 +223,46 @@ class Timeseries
     variance: #{@variance()}
     """
 
-root.$ts = (data, mapFn=null) ->
+###
+# Multimeseries class
+#
+# A class for wrapping timed values
+#
+# data: a 2d array containing
+# 
+###
+class MultiTimeseries
+  constructor: (@series) ->
+    @primary = series[0]
+
+
+# Factory function
+root.$ts = (data, mapper=null, sort=false) ->
   if data
-    data = mapFn(data) if mapFn
-    return new Timeseries(data)
+    if mapper
+      data = mapper(data)
+
+    if data.length == 0
+      throw "ts.coffee takes an array of data"
+
+    if typeof(data[0][0]) != "number"
+      throw "ts.coffee requires timestamps; eg: [[timestamp, value]...]"
+
+    # if sort
+    #   data = sort(data)
+
+    if typeof(data[0][1]) == "number"
+      return new Timeseries(data)
+
+    lookup = {}
+    for key, value of data[0][1]
+      lookup[key] = []
+
+    for point in data
+      for key, value of point
+        lookup[key].push([point[0], value])
+
+    return new MultiTimeseries(lookup)
 
   index: (data, start=(new Date().getTime()), step=60000) ->
     i = 0
