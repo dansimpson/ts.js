@@ -197,19 +197,16 @@ class Timeseries
   # matching if we don't get the exact idx
   bsearch: (timestamp, idx1, idx2) ->
     mid = Math.floor((idx2 - idx1) / 2.0) + idx1
-    if idx1 == mid || idx2 == mid
-      d1 = @time(idx1) - timestamp
-      d2 = @time(idx2) - timestamp
-      if Math.abs(d2) > Math.abs(d1)
-        return idx1
-      else
-        return idx2
-    if timestamp < @time(mid)
-      return @bsearch timestamp, idx1, mid
+    if idx1 == mid
+      diff1 = Math.abs(@time(idx1) - timestamp)
+      diff2 = Math.abs(@time(idx2) - timestamp)
+      if diff2 > diff1 then idx1 else idx2
+    else if timestamp < @time(mid)
+      @bsearch timestamp, idx1, mid
     else if timestamp > @time(mid)
-      return @bsearch timestamp, mid, idx2
-    return mid
-
+      @bsearch timestamp, mid, idx2
+    else
+      mid
 
   # report
   toString: () ->
@@ -226,21 +223,128 @@ class Timeseries
 ###
 # Multimeseries class
 #
-# A class for wrapping timed values
-#
-# data: a 2d array containing
+# A mutli-valued timeseries class which wraps
+# multiple Timeseries objects and provides the same
+# functionality
 # 
 ###
 class MultiTimeseries
-  constructor: (@series) ->
-    @primary = series[0]
+  constructor: (@lookup) ->
+    @attrs = []
+    for key, ts of @lookup
+      @attrs.push(key)
+    @data = @lookup[@attrs[0]]
 
+  get: (attr) ->
+    unless @lookup[attr]
+      throw "Can't get attribute #{attr} of multi time series"
+    @lookup[attr]
+
+  dispatch: (method, attr=null, args) ->
+    # console.log "dispatching:", method, attr, args
+    if attr
+      @get(attr)[method](args)
+    else
+      res = {}
+      for attr in @attrs
+        res[attr] = @get(attr)[method](args)
+      res
+
+  # the number of samples
+  size: () -> 
+    @data.size()
+
+  # the sum of all values
+  sum: (attr=null) ->
+    @dispatch("sum", attr)
+
+  # the sum of all squared values
+  sumsq: (attr=null) ->
+    @dispatch("sumsq", attr)
+
+  # variance of the values
+  variance: (attr=null) ->
+    @dispatch("variance", attr)
+
+  # standard deviation of the values
+  stddev: (attr=null) ->
+    @dispatch("stddev", attr)
+
+  # mean of value
+  mean: (attr=null) ->
+    @dispatch("mean", attr)
+
+  # the first sample
+  first: (attr=null) ->
+    @sample(0, attr)
+
+  # the last sample
+  last: (attr=null) ->
+    @sample(@size() - 1, attr)
+
+  # get the sample at index idx
+  sample: (idx, attr=null) ->
+    [@time(idx), @value(idx, attr)]
+
+  # get the value at index idx
+  value: (idx, attr=null) ->
+    @dispatch("value", attr, idx)
+
+  # get the time at index idx
+  time: (idx) ->
+    @data.time(idx)
+
+  # value range (min, max)
+  range: (attr=null) ->
+    @dispatch("range", attr)
+
+  # minimum of value
+  min: (attr=null) ->
+    @dispatch("min", attr)
+
+  # maximum of values
+  max: (attr=null) ->
+    @dispatch("max", attr)
+
+  # values as 1d array
+  values: (attr=null) ->
+    @dispatch("values", attr)
+
+  # filter out items and return new
+  # timeseries
+  filter: (attr=null, fn) ->
+    # not sure
+
+  # normalized values as 1d array
+  norms: (attr=null) ->
+    @dispatch("norms", attr)
+
+  # time domain (earliest, latest)
+  domain: () ->
+    @data.domain()
+
+  # timestamps as 1d array
+  timestamps: () ->
+    @data.timestamps()
+
+  # finds the nearest index in the domain using
+  # a binary search
+  nearest: (timestamp) ->
+    @data.nearest(timestamp)
+
+  # report
+  toString: () ->
+    for attr, ts of @lookup
+      ts.toString()
 
 # Factory function
 root.$ts = (data, mapper=null, sort=false) ->
   if data
     if mapper
-      data = mapper(data)
+      tmp = []
+      for item in data
+        tmp.push mapper(item)
+      data = tmp
 
     if data.length == 0
       throw "ts.coffee takes an array of data"
@@ -248,19 +352,25 @@ root.$ts = (data, mapper=null, sort=false) ->
     if typeof(data[0][0]) != "number"
       throw "ts.coffee requires timestamps; eg: [[timestamp, value]...]"
 
-    # if sort
-    #   data = sort(data)
-
     if typeof(data[0][1]) == "number"
       return new Timeseries(data)
 
+    # At this point we should have a time series
+    # with standard object values (key, value).
+    # Take those values and split them into singular ts
     lookup = {}
     for key, value of data[0][1]
       lookup[key] = []
 
+    # add items to each sub array
     for point in data
-      for key, value of point
+      for key, value of point[1]
         lookup[key].push([point[0], value])
+    
+    # Conver array to actual ts, nested if need be
+    for key, value of lookup
+      lookup[key] = $ts(lookup[key])
+
 
     return new MultiTimeseries(lookup)
 

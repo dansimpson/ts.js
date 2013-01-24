@@ -20,8 +20,13 @@ class Runner
       if a.length != b.length
         throw new Error("#{a} is not equal to #{b}, length mismatch")
       for i in [0..a.length]
-        if a[i] != b[i]
-          throw new Error("#{a} is not equal to #{b} at index #{i}")
+        @assertEqual a[i], b[i]
+      return this
+
+    if a instanceof Object
+      for k, v of a
+        if b[k] != v
+          throw new Error("a.#{k} = #{a[k]}, and b.#{k} = #{b[k]}")
       return this
 
     if padding
