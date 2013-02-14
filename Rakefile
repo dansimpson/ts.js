@@ -1,12 +1,41 @@
 
+
+def file_list
+  parts = [
+    "ts.util.coffee",
+    "ts.core.coffee",
+    "ts.plot.coffee"
+  ].flatten.uniq
+end
+
+def bundle files
+  files.collect { |file|
+    File.open(file).read
+  }.join("\r\n")
+end
+
+def convert
+  File.open("ts.coffee", "w") do |f|
+    f << bundle(file_list)
+  end
+  system "coffee -o examples -c ts.coffee && rm ts.coffee"
+end
+
 task :default => :build
 
 task :test do
   system "coffee tests/runner.coffee"
 end
 
+task :minify => :build do
+  require "yuicompressor" 
+  File.open("ts.min.js", "w") do |f|
+    f << YUICompressor.compress_js(File.open("ts.js").read, :munge => true)
+  end
+end
+
 task :build do
-  system "coffee -c ts.coffee"
+  convert
 end
 
 task :cbuild do
@@ -24,6 +53,7 @@ task :autotest => [:test] do
     def file_modified
       if Time.now - $last > 1
         $last = Time.now
+        convert
         system "coffee tests/runner.coffee"
       end
     end
