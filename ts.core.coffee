@@ -6,6 +6,49 @@ Copyright 2012 Dan Simpson
 MIT License: http://opensource.org/licenses/MIT
 ###
 
+
+class TimeseriesFactory
+
+  constructor: () ->
+
+  validate: (data) ->
+    if data.length == 0
+      throw "Timeseries expects an array of data."
+    
+    if data[0].length != 2
+      throw "Timeseries expects input like [[timestamp, value]...]"
+
+    if typeof(data[0][0]) != "number"
+      throw "Timeseries expects timestamps; eg: [[timestamp, value]...]"
+
+  # Convert a 1-dimensional array to a 2d arry with
+  # timestamps and values
+  # +data+ the array of objects to timestamp
+  # +start+ the start time (defaults to now)
+  # +step+ the number of milliseconds between each
+  timestamp: (data, start=(new Date().getTime()), step=60000) ->
+    i = 0
+    r = []
+    for v in data
+      r.push [start + (i++ * step), v]
+    r
+
+  # Wrap 2d array of timeseries data in a Timeseries object
+  wrap: (data) ->
+    @validate(data)
+    new Timeseries(data)
+
+  # Create a numeric timeseries, capable basic plotting, etc
+  numeric: (data) ->
+    @validate(data)
+    if typeof(data[0][1]) != "number"
+      throw "NumericTimeseries expects timestamps and numbers; eg: [[timestamp, number]...]"
+    new NumericTimeseries(data)
+
+  multi: (data) ->
+    @validate(data)
+    new MultiTimeseries(data)
+
 ###
 #
 #
@@ -55,7 +98,13 @@ class Timeseries
     for tv in @data
       if fn(tv[0], tv[1])
         r.push tv
-    $ts(r)
+    @clone()(r)
+
+  map: (fn) ->
+    r = []
+    for tv in @data
+      r.push fn(tv[0], tv[1])
+    @clone()(r)
 
 
   # timestamps as 1d array
@@ -95,6 +144,9 @@ class Timeseries
 
   type: () ->
     "ts"
+
+  clone: () ->
+    $ts.wrap
 
 ###
 # NumbericTimeseries class
@@ -242,6 +294,8 @@ class NumericTimeseries extends Timeseries
   type: () ->
     "numeric"
 
+  clone: () ->
+    $ts.numeric
 
   plot: (opts) ->
     merge(opts, { ts: @ })
@@ -287,7 +341,7 @@ class MultiTimeseries extends Timeseries
     
     # Conver array to actual ts, nested if need be
     for key, value of @lookup
-      @lookup[key] = $ts(@lookup[key])
+      @lookup[key] = $ts.numeric(@lookup[key])
 
   # Find a series by path
   path: (series) ->
@@ -360,51 +414,12 @@ class MultiTimeseries extends Timeseries
   type: () ->
     "multi"
 
+  clone: () ->
+    $ts.multi
+
   plot: () ->
-    alert("s")
+    console.error "Plot not implemented"
 
-# Utils
-util =
-  timestamp: (data, start=(new Date().getTime()), step=60000) ->
-    i = 0
-    r = []
-    for v in data
-      r.push [start + (i++ * step), v]
-    r
-
-  plot: (opts) ->
-    if opts
-      console.log "a"
-    else
-      plotRegistry
-
-# $ts.build()
-# $ts.generate()
-# $ts.build(input, {
-#   series: ["x", "y", "z"]
-# });
 
 # Factory function
-root.$ts = (data, mapper=null, sort=false) ->
-  if data
-    if mapper
-      tmp = []
-      for item in data
-        tmp.push mapper(item)
-      data = tmp
-
-    if data.length == 0
-      throw "$ts expects an array of data."
-
-    if data[0].length != 2
-      throw "$ts expects input like [[timestamp, value]...]"
-
-    if typeof(data[0][0]) != "number"
-      throw "$ts expects timestamps; eg: [[timestamp, value]...]"
-
-    if typeof(data[0][1]) == "number"
-      return new NumericTimeseries(data)
-
-    return new MultiTimeseries(data)
-  else
-    util
+root.$ts = new TimeseriesFactory()

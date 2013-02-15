@@ -1,5 +1,5 @@
-ts.coffee
-=========
+ts.js
+=====
 
 A small timeseries library for the browser and node.js
 
@@ -9,7 +9,7 @@ Getting Started
 Convert your timeseries data into a ts instance:
 
 ```js
-var ts = $ts([
+var ts = $ts.wrap([
 //[unix timestamp, value],
   [1351903913000 , 67.33],
   [1351913913000 , 62.33]

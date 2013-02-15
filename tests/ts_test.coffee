@@ -5,30 +5,24 @@ require "../ts.core.coffee"
 runner.describe "$ts"
 
 runner.test "instantiate", () ->
-  runner.assertNotNull $ts([[0, 1], [1, 1]])
+  runner.assertNotNull $ts.wrap([[0, 1], [1, 1]])
 
 runner.test "index data", () ->
-  ts = $ts().timestamp([1, 2, 2.2, 2.3, 2.2, 2, 1.9], 1000, 60)
+  ts = $ts.timestamp([1, 2, 2.2, 2.3, 2.2, 2, 1.9], 1000, 60)
   runner.assertEqual 1000, ts[0][0]
   runner.assertEqual 1060, ts[1][0]
   runner.assertEqual 2, ts[1][1]
 
 ############################
 
-runner.describe "timeseries"
+runner.describe "basic timeseries"
 
 time = 0
-data = $ts().timestamp([1, 2, 3, 6, 4, 4, 4], time)
-ts   = $ts(data)
+data = $ts.timestamp([1, 2, 3, 6, 4, 4, 4], time)
+ts   = $ts.wrap(data)
 
-runner.test "calc min", () ->
-  runner.assertEqual 1, ts.min()
-
-runner.test "calc max", () ->
-  runner.assertEqual 6, ts.max()
-
-runner.test "calc mean", () ->
-  runner.assertEqual 3.42, ts.mean(), 0.1
+runner.test "give domain", () ->
+  runner.assertEqual [time, data[data.length - 1][0]], ts.domain()
 
 runner.test "calc size", () ->
   runner.assertEqual 7, ts.size()
@@ -41,11 +35,23 @@ runner.test "give last", () ->
   runner.assertEqual data[data.length - 1][0], ts.last()[0]
   runner.assertEqual data[data.length - 1][1], ts.last()[1]
 
+runner.describe "numeric timeseries"
+
+time = 0
+data = $ts.timestamp([1, 2, 3, 6, 4, 4, 4], time)
+ts   = $ts.numeric(data)
+
+runner.test "calc min", () ->
+  runner.assertEqual 1, ts.min()
+
+runner.test "calc max", () ->
+  runner.assertEqual 6, ts.max()
+
+runner.test "calc mean", () ->
+  runner.assertEqual 3.42, ts.mean(), 0.1
+
 runner.test "give range", () ->
   runner.assertEqual [1, 6], ts.range()
-
-runner.test "give domain", () ->
-  runner.assertEqual [time, data[data.length - 1][0]], ts.domain()
 
 runner.test "compute sum", () ->
   runner.assertEqual 24, ts.sum()
@@ -77,7 +83,7 @@ runner.test "give time", () ->
   runner.assertEqual time, ts.time(0)
 
 runner.test "simplify", () ->
-  ts1 = $ts($ts().timestamp([1,1,1,1,2,1,1,1,1]))
+  ts1 = $ts.numeric($ts.timestamp([1,1,1,1,2,1,1,1,1]))
   ts2 = ts1.simplify()
 
   runner.assertEqual [1,1,2,1,1], ts2.values()
@@ -104,8 +110,8 @@ data = [
   { v1: 4, v2: 8 }
 ]
 
-data = $ts().timestamp(data, time)
-ts   = $ts(data)
+data = $ts.timestamp(data, time)
+ts   = $ts.multi(data)
 
 runner.test "calc min", () ->
   runner.assertEqual 1, ts.min("v1")
