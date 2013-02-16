@@ -98,7 +98,7 @@ class Timeseries
     for tv in @data
       if fn(tv[0], tv[1])
         r.push tv
-    @clone()(r)
+    @clone().apply($ts,[r])
 
   map: (fn) ->
     r = []
