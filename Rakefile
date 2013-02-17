@@ -2,9 +2,7 @@
 
 def file_list
   parts = [
-    "ts.util.coffee",
-    "ts.core.coffee",
-    "ts.plot.coffee"
+    "ts.coffee"
   ].flatten.uniq
 end
 
@@ -15,10 +13,7 @@ def bundle files
 end
 
 def convert
-  File.open("ts.coffee", "w") do |f|
-    f << bundle(file_list)
-  end
-  system "coffee -o examples -c ts.coffee && rm ts.coffee"
+  system "coffee -o build -c ts.coffee"
 end
 
 task :default => :build
@@ -29,7 +24,7 @@ end
 
 task :minify => :build do
   require "yuicompressor" 
-  File.open("ts.min.js", "w") do |f|
+  File.open("build/ts.min.js", "w") do |f|
     f << YUICompressor.compress_js(File.open("ts.js").read, :munge => true)
   end
 end

@@ -84,6 +84,10 @@ class Timeseries
   domain: () ->
     [@first()[0], @last()[0]]
 
+  # append another timerseries item
+  append: (t, v) ->
+    @data.push [t, v]
+
   # values as 1d array
   values: () ->
     r = []
@@ -98,13 +102,13 @@ class Timeseries
     for tv in @data
       if fn(tv[0], tv[1])
         r.push tv
-    @clone().apply($ts,[r])
+    new @constructor(r)
 
   map: (fn) ->
     r = []
     for tv in @data
       r.push fn(tv[0], tv[1])
-    @clone()(r)
+    new @constructor(r)
 
 
   # timestamps as 1d array
@@ -141,12 +145,6 @@ class Timeseries
     items   : #{@size()}
     domain  : #{@domain()}
     """
-
-  type: () ->
-    "ts"
-
-  clone: () ->
-    $ts.wrap
 
 ###
 # NumbericTimeseries class
@@ -291,16 +289,6 @@ class NumericTimeseries extends Timeseries
       idx++
     sum
 
-  type: () ->
-    "numeric"
-
-  clone: () ->
-    $ts.numeric
-
-  plot: (opts) ->
-    merge(opts, { ts: @ })
-    new Chart(opts);
-
   # report
   toString: () ->
     """
@@ -410,15 +398,6 @@ class MultiTimeseries extends Timeseries
   # normalized values as 1d array
   norms: (series) ->
     @dispatch("norms", series)
-
-  type: () ->
-    "multi"
-
-  clone: () ->
-    $ts.multi
-
-  plot: () ->
-    console.error "Plot not implemented"
 
 
 # Factory function

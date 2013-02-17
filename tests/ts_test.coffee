@@ -1,6 +1,4 @@
-require "../ts.util.coffee"
-require "../ts.plot.coffee"
-require "../ts.core.coffee"
+require "../ts.coffee"
 
 runner.describe "$ts"
 
@@ -34,6 +32,13 @@ runner.test "give first", () ->
 runner.test "give last", () ->
   runner.assertEqual data[data.length - 1][0], ts.last()[0]
   runner.assertEqual data[data.length - 1][1], ts.last()[1]
+
+runner.test "append", () ->
+  size = data.length
+  ts.append 600, 15
+
+  runner.assertEqual size + 1, ts.size()
+  runner.assertEqual 15, ts.last()[1]
 
 runner.describe "numeric timeseries"
 
@@ -97,6 +102,13 @@ runner.test "filter", () ->
   runner.assertEqual 5, filtered.size()
   runner.assertEqual 2, filtered.min()
 
+runner.test "map", () ->
+  mapped = ts.map (t, v) ->
+    [t, v * 2]
+  
+  runner.assertEqual 7, mapped.size()
+  runner.assertEqual 2, mapped.min()
+
 runner.describe "multi timeseries"
 
 time = 0
@@ -154,14 +166,6 @@ runner.test "compute variance", () ->
 
 runner.test "compute stddev", () ->
   runner.assertEqual 1.09, ts.stddev("v1"), 0.1
-
-runner.test "compute nearest", () ->
-  runner.assertEqual 0, ts.nearest(0)
-  runner.assertEqual 6, ts.nearest(ts.last()[0] + 50)
-  runner.assertEqual 5, ts.nearest(ts.last()[0] - 60000)
-  runner.assertEqual 4, ts.nearest(ts.last()[0] - 90001)
-  runner.assertEqual 5, ts.nearest(ts.last()[0] - 89999)
-  runner.assertEqual 5, ts.nearest(ts.last()[0] - 90000)
 
 runner.test "give sample", () ->
   runner.assertEqual [time, { v1: 1, v2: 2 }], ts.sample(0)
