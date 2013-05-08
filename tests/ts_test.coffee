@@ -1,4 +1,4 @@
-require "../ts.coffee"
+$ts = require("../ts.coffee").$ts
 
 runner.describe "$ts"
 

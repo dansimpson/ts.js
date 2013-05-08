@@ -1,5 +1,5 @@
 ###
-ts.coffee - version 0.9.0
+ts.js - version 0.9.0
 
 Copyright 2012 Dan Simpson, Mike Countis
 
@@ -59,6 +59,8 @@ class TimeseriesFactory
       @wrap(data)
     else
       @multi(data)
+
+factory = new TimeseriesFactory()
 
 ###
 #
@@ -380,9 +382,9 @@ class MultiTimeseries extends Timeseries
     # Conver array to actual ts, nested if need be
     for key, value of @lookup
       if typeof(@lookup[key][0][1]) == "number"
-        @lookup[key] = $ts.numeric(@lookup[key])
+        @lookup[key] = factory.numeric(@lookup[key])
       else
-        @lookup[key] = $ts.multi(@lookup[key])
+        @lookup[key] = factory.multi(@lookup[key])
 
   # find a series by name or path
   # eg: mts.series("hits")
@@ -407,6 +409,10 @@ class MultiTimeseries extends Timeseries
   attr: (name) ->
     @series(name)
 
-
 # expose the factory
-root.$ts = new TimeseriesFactory()
+root = if typeof module != "undefined" && module.exports
+  module.exports
+else
+  window
+
+root.$ts = factory

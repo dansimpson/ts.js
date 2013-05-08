@@ -78,7 +78,7 @@ Now you can call any of the following methods, depending on the type of timeseri
 
 For example:
 
-```json
+```js
 data = [timestamp, {
   dan: {
     drinks: 2,
