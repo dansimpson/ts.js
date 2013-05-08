@@ -1,6 +1,6 @@
 ## ts.js
 
-A tiny timeseries library for the browser and node.js
+A tiny timeseries library (6k minified) for the browser and node.js
 
 ### Getting Started
 
@@ -114,8 +114,10 @@ var ts = $ts.numeric(
 );
 ```
 
-Contributing
-------------
+#### Contributing
 
 fork -> modify -> rake test -> request pull
 
+#### Contributors
+* Dan Simpson
+* Mike Countis

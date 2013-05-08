@@ -64,6 +64,17 @@ MIT License: http://opensource.org/licenses/MIT
       return new MultiTimeseries(data);
     };
 
+    TimeseriesFactory.prototype.build = function(data) {
+      this.validate(data);
+      if (typeof data[0][1] === "number") {
+        return this.numeric(data);
+      } else if (typeof data[0][1] === "string") {
+        return this.wrap(data);
+      } else {
+        return this.multi(data);
+      }
+    };
+
     return TimeseriesFactory;
 
   })();

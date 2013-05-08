@@ -16,8 +16,11 @@ runner.test "index data", () ->
 runner.describe "basic timeseries"
 
 time = 0
-data = $ts.timestamp([1, 2, 3, 6, 4, 4, 4], time)
+data = $ts.timestamp(["a", "b", "c", "d", "e", "f", "g"], time)
 ts   = $ts.wrap(data)
+
+runner.test "simple builder", () ->
+  runner.assertEqual "Timeseries", $ts.build(data).constructor.name
 
 runner.test "give domain", () ->
   runner.assertEqual [time, data[data.length - 1][0]], ts.domain()
@@ -27,7 +30,7 @@ runner.test "calc size", () ->
 
 runner.test "give first", () ->
   runner.assertEqual time, ts.first()[0]
-  runner.assertEqual 1, ts.first()[1]
+  runner.assertEqual "a", ts.first()[1]
 
 runner.test "give last", () ->
   runner.assertEqual data[data.length - 1][0], ts.last()[0]
@@ -45,6 +48,9 @@ runner.describe "numeric timeseries"
 time = 0
 data = $ts.timestamp([1, 2, 3, 6, 4, 4, 4], time)
 ts   = $ts.numeric(data)
+
+runner.test "numeric builder", () ->
+  runner.assertEqual "NumericTimeseries", $ts.build(data).constructor.name
 
 runner.test "calc min", () ->
   runner.assertEqual 1, ts.min()
@@ -180,3 +186,6 @@ ts   = $ts.multi(data)
 
 runner.test "path", () ->
   runner.assertEqual 12, ts.series("/v2/x").max()
+
+runner.test "multi builder", () ->
+  runner.assertEqual "MultiTimeseries", $ts.build(data).constructor.name

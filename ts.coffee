@@ -38,16 +38,27 @@ class TimeseriesFactory
     @validate(data)
     new Timeseries(data)
 
-  # Create a numeric timeseries, capable basic plotting, etc
+  # Create a NumericTimeseries object, capable basic plotting, etc
   numeric: (data) ->
     @validate(data)
     if typeof(data[0][1]) != "number"
       throw "NumericTimeseries expects timestamps and numbers; eg: [[timestamp, number]...]"
     new NumericTimeseries(data)
 
+  # create a MultiTimeseries object with the data
   multi: (data) ->
     @validate(data)
     new MultiTimeseries(data)
+
+  # Guess what kind of data we are working with
+  build: (data) ->
+    @validate(data)
+    if typeof(data[0][1]) == "number"
+      @numeric(data)
+    else if typeof(data[0][1]) == "string"
+      @wrap(data)
+    else
+      @multi(data)
 
 ###
 #
