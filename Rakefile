@@ -16,7 +16,7 @@ def convert
   system "coffee -o build -c ts.coffee"
 end
 
-task :default => :build
+task :default => :minify
 
 task :test do
   system "coffee tests/runner.coffee"
@@ -25,7 +25,7 @@ end
 task :minify => :build do
   require "yuicompressor" 
   File.open("build/ts.min.js", "w") do |f|
-    f << YUICompressor.compress_js(File.open("ts.js").read, :munge => true)
+    f << YUICompressor.compress_js(File.open("build/ts.js").read, :munge => true)
   end
 end
 
@@ -58,7 +58,8 @@ task :autotest => [:test] do
   EM.run do
     ["."].collect { |dir|
       Dir.glob(File.dirname(__FILE__) + "/#{dir}/**/*.coffee")
-    }.flatten.each do |file|  
+    }.flatten.each do |file|
+       puts file
       EM.watch_file file, Handler
     end
   end

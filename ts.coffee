@@ -1,7 +1,7 @@
 ###
-ts.coffee - version 0.0.1
+ts.coffee - version 0.9.0
 
-Copyright 2012 Dan Simpson
+Copyright 2012 Dan Simpson, Mike Countis
 
 MIT License: http://opensource.org/licenses/MIT
 ###
@@ -60,6 +60,14 @@ class Timeseries
   size: () -> 
     @data.length
 
+  # the number of samples
+  length: () ->
+    @data.length
+
+  # the number of samples
+  count: () -> 
+    @data.length
+
   # the first sample
   first: () ->
     @data[0]
@@ -95,6 +103,17 @@ class Timeseries
       r.push v
     r
 
+  # scan timeseries and get the range of events between
+  # time nearest values of t1 and time t2
+  scan: (t1, t2) ->
+    idx1 = @nearest(t1)
+    idx2 = @nearest(t2)
+    if idx1 == @size() - 1
+      idx1++
+    if idx2 == @size() - 1
+      idx2++
+    new @constructor(@data.slice(idx1, idx2))
+
   # filter out items and return new
   # timeseries
   filter: (fn) ->
@@ -109,7 +128,6 @@ class Timeseries
     for tv in @data
       r.push fn(tv[0], tv[1])
     new @constructor(r)
-
 
   # timestamps as 1d array
   timestamps: () ->
@@ -271,7 +289,7 @@ class NumericTimeseries extends Timeseries
       throw "Query length exceeds source length"
 
     for i in [0..(source.length - query.length - 1)]
-      distance = @distance(query, source[i..(i + query.length)])
+      distance = @_distance(query, source[i..(i + query.length)])
 
       if distance < best
         best = distance
@@ -281,7 +299,7 @@ class NumericTimeseries extends Timeseries
       
   # Euclidean distance function for one timeseries on another
   # used for pattern searching
-  distance: (ts1, ts2) ->
+  _distance: (ts1, ts2) ->
     sum = 0.0
     idx = 0
     for v in ts1
@@ -302,17 +320,38 @@ class NumericTimeseries extends Timeseries
     """
 
 ###
-# Multimeseries class
-#
-# A mutli-valued timeseries class which wraps
-# multiple Timeseries objects and provides the same
-# functionality
-# 
+MultiTimeseries class
+
+A wrapper of many timeseries which share a timeline.
+
+The underlying structure ends up being a simple spanning tree, which you can
+query by path or name.
+
+Example... one of your data values looks like this:
+data = [timestamp, {
+  dan: {
+    drinks: 2,
+    calories: 160
+  },
+  mike: {
+    drinks: 1,
+    calories: -1
+  }
+}, ...]
+
+var tree = $ts.multi(data)
+tree.series("dan/drinks").max(); // -> 2
+tree.series("dan/calories").max(); // -> 160
+tree.series("mike/drinks").max(); // -> 1
+tree.series("mike/calories").max(); // -> -1
+
+tree.series("dan") -> MultiTimeseries
+
 ###
 class MultiTimeseries extends Timeseries
+
   constructor: (@data) ->
     super(@data)
-
     # At this point we should have a time series
     # with standard object values (key, value).
     # Take those values and split them into singular ts
@@ -329,76 +368,34 @@ class MultiTimeseries extends Timeseries
     
     # Conver array to actual ts, nested if need be
     for key, value of @lookup
-      @lookup[key] = $ts.numeric(@lookup[key])
-
-  # Find a series by path
-  path: (series) ->
-    parts = series.split("/")
-    first = @series(parts.shift())
-
-    if first
-      if first.type() == "multi"
-        first.path(parts.join("/"))
+      if typeof(@lookup[key][0][1]) == "number"
+        @lookup[key] = $ts.numeric(@lookup[key])
       else
-        first
-    else
-      null
+        @lookup[key] = $ts.multi(@lookup[key])
 
-  series: (series) ->
-    unless @lookup[series]
-      throw "Can't get attribute #{series} of multi time series"
-    @lookup[series]
+  # find a series by name or path
+  # eg: mts.series("hits")
+  # eg: mts.series("hostname.com/hits")
+  series: (name) ->
+    if name.indexOf("/") > -1
+      parts = name.split("/")
+      if parts[0] == ""
+        parts.shift()
 
-  dispatch: (method, series, args) ->
-    # console.log "dispatching:", method, attr, args
-    if series
-      @series(series)[method](args)
-    else
-      res = {}
-      for attr in @attrs
-        res[attr] = @series(attr)[method](args)
-      res
-
-  # the sum of all values
-  sum: (series) ->
-    @dispatch("sum", series)
-
-  # the sum of all squared values
-  sumsq: (series) ->
-    @dispatch("sumsq", series)
-
-  # variance of the values
-  variance: (series) ->
-    @dispatch("variance", series)
-
-  # standard deviation of the values
-  stddev: (series) ->
-    @dispatch("stddev", series)
-
-  # mean of value
-  mean: (series) ->
-    @dispatch("mean", series)
-
-  # value range (min, max)
-  range: (series) ->
-    @dispatch("range", series)
-
-  # minimum of value
-  min: (series) ->
-    @dispatch("min", series)
-
-  # maximum of values
-  max: (series) ->
-    @dispatch("max", series)
-
-  # values as 1d array
-  values: (series) ->
-    @dispatch("values", series)
-
-  # normalized values as 1d array
-  norms: (series) ->
-    @dispatch("norms", series)
+      head = parts.shift()
+      unless @lookup[head]
+        throw "Can't get attribute #{name} of multi time series"
+      return @lookup[head].series(parts.join("/"))
 
 
-# Factory function
+    # base case...
+    unless @lookup[name]
+      throw "Can't get attribute #{name} of multi time series"
+    @lookup[name]
+
+  attr: (name) ->
+    @series(name)
+
+
+# expose the factory
 root.$ts = new TimeseriesFactory()
