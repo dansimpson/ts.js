@@ -9,7 +9,7 @@ MIT License: http://opensource.org/licenses/MIT
 
 
 (function() {
-  var MultiTimeseries, NumericTimeseries, Timeseries, TimeseriesFactory, factory, root,
+  var MultiTimeseries, NumericTimeseries, Scale, Timeseries, TimeseriesFactory, factory, root,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -81,6 +81,32 @@ MIT License: http://opensource.org/licenses/MIT
 
   factory = new TimeseriesFactory();
 
+  Scale = (function() {
+    function Scale(width, height, series) {
+      var _ref, _ref1;
+
+      this.width = width;
+      this.height = height;
+      _ref = series.domain(), this.t1 = _ref[0], this.t2 = _ref[1];
+      _ref1 = series.range(), this.min = _ref1[0], this.max = _ref1[1];
+    }
+
+    Scale.prototype.x = function(v) {
+      return ((v - this.t1) / (this.t2 - this.t1)) * this.width;
+    };
+
+    Scale.prototype.y = function(v) {
+      return this.height - ((v - this.min) / (this.max - this.min)) * this.height;
+    };
+
+    Scale.prototype.rx = function(v) {
+      return (v / this.width) * (this.t2 - this.t1) + this.t1;
+    };
+
+    return Scale;
+
+  })();
+
   /*
   #
   #
@@ -142,6 +168,18 @@ MIT License: http://opensource.org/licenses/MIT
         r.push(v);
       }
       return r;
+    };
+
+    Timeseries.prototype.duration = function() {
+      return this.end() - this.start();
+    };
+
+    Timeseries.prototype.start = function() {
+      return this.first()[0];
+    };
+
+    Timeseries.prototype.end = function() {
+      return this.last()[0];
     };
 
     Timeseries.prototype.scan = function(t1, t2) {
@@ -310,6 +348,10 @@ MIT License: http://opensource.org/licenses/MIT
       return [this.min(), this.max()];
     };
 
+    NumericTimeseries.prototype.span = function() {
+      return this.max() - this.min();
+    };
+
     NumericTimeseries.prototype.min = function() {
       return this.statistics().min;
     };
@@ -328,6 +370,15 @@ MIT License: http://opensource.org/licenses/MIT
         r.push(v);
       }
       return r;
+    };
+
+    NumericTimeseries.prototype.scale = function(width, height) {
+      var scale;
+
+      scale = new Scale(width, height, this);
+      return this.map(function(t, v) {
+        return [scale.x(t), scale.y(v)];
+      });
     };
 
     NumericTimeseries.prototype.norms = function() {
@@ -480,14 +531,14 @@ MIT License: http://opensource.org/licenses/MIT
     MultiTimeseries.prototype.series = function(name) {
       var head, parts;
 
-      if (name.indexOf("/") > -1) {
+      if (name[0] === "/") {
+        return this.series(name.substr(1));
+      }
+      if (name.indexOf("/") > 0) {
         parts = name.split("/");
-        if (parts[0] === "") {
-          parts.shift();
-        }
         head = parts.shift();
         if (!this.lookup[head]) {
-          throw "Can't get attribute " + name + " of multi time series";
+          throw "Can't get attribute " + head + " of multi time series";
         }
         return this.lookup[head].series(parts.join("/"));
       }

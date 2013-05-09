@@ -62,6 +62,21 @@ class TimeseriesFactory
 
 factory = new TimeseriesFactory()
 
+
+class Scale
+  constructor: (@width, @height, series) ->
+    [@t1, @t2] = series.domain()
+    [@min, @max] = series.range()
+
+  x: (v) ->
+    ((v - @t1) / (@t2 - @t1)) * @width
+
+  y: (v) ->
+    @height - ((v - @min) / (@max - @min)) * @height
+
+  rx: (v) ->
+    (v / @width) * (@t2 - @t1) + @t1
+
 ###
 #
 #
@@ -115,6 +130,18 @@ class Timeseries
     for [t, v] in @data
       r.push v
     r
+
+  # The total duration of the series
+  duration: () ->
+    @end() - @start()
+
+  # The start time
+  start: () ->
+    @first()[0]
+
+  # The end time
+  end: () ->
+    @last()[0]
 
   # scan timeseries and get the range of events between
   # time nearest values of t1 and time t2
@@ -239,6 +266,10 @@ class NumericTimeseries extends Timeseries
   range: () ->
     [@min(), @max()]
 
+  # value range (min, max)
+  span: () ->
+    @max() - @min()
+
   # minimum of value
   min: () ->
     @statistics().min
@@ -253,6 +284,11 @@ class NumericTimeseries extends Timeseries
     for [t, v] in @data
       r.push v
     r
+
+  # Scale the dataset
+  scale: (width, height) ->
+    scale = new Scale(width, height, @)
+    @map (t, v) -> [scale.x(t), scale.y(v)]
 
   # normalized values as 1d array
   norms: () ->
@@ -390,16 +426,15 @@ class MultiTimeseries extends Timeseries
   # eg: mts.series("hits")
   # eg: mts.series("hostname.com/hits")
   series: (name) ->
-    if name.indexOf("/") > -1
+    if name[0] == "/"
+      return @series(name.substr(1))
+
+    if name.indexOf("/") > 0
       parts = name.split("/")
-      if parts[0] == ""
-        parts.shift()
-
-      head = parts.shift()
+      head  = parts.shift()
       unless @lookup[head]
-        throw "Can't get attribute #{name} of multi time series"
+        throw "Can't get attribute #{head} of multi time series"
       return @lookup[head].series(parts.join("/"))
-
 
     # base case...
     unless @lookup[name]

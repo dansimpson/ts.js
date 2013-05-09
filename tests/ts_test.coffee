@@ -187,5 +187,8 @@ ts   = $ts.multi(data)
 runner.test "path", () ->
   runner.assertEqual 12, ts.series("/v2/x").max()
 
+runner.test "path double", () ->
+  runner.assertEqual 12, ts.series("/v2").series("/x").max()
+
 runner.test "multi builder", () ->
   runner.assertEqual "MultiTimeseries", $ts.build(data).constructor.name
