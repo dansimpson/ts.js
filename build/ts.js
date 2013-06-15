@@ -9,7 +9,7 @@ MIT License: http://opensource.org/licenses/MIT
 
 
 (function() {
-  var MultiTimeseries, NumericTimeseries, Scale, Timeseries, TimeseriesFactory, factory, root,
+  var MultiTimeseries, NumericTimeseries, Timeseries, TimeseriesFactory, factory, root,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -80,32 +80,6 @@ MIT License: http://opensource.org/licenses/MIT
   })();
 
   factory = new TimeseriesFactory();
-
-  Scale = (function() {
-    function Scale(width, height, series) {
-      var _ref, _ref1;
-
-      this.width = width;
-      this.height = height;
-      _ref = series.domain(), this.t1 = _ref[0], this.t2 = _ref[1];
-      _ref1 = series.range(), this.min = _ref1[0], this.max = _ref1[1];
-    }
-
-    Scale.prototype.x = function(v) {
-      return ((v - this.t1) / (this.t2 - this.t1)) * this.width;
-    };
-
-    Scale.prototype.y = function(v) {
-      return this.height - ((v - this.min) / (this.max - this.min)) * this.height;
-    };
-
-    Scale.prototype.rx = function(v) {
-      return (v / this.width) * (this.t2 - this.t1) + this.t1;
-    };
-
-    return Scale;
-
-  })();
 
   /*
   #
@@ -187,11 +161,11 @@ MIT License: http://opensource.org/licenses/MIT
 
       idx1 = this.nearest(t1);
       idx2 = this.nearest(t2);
-      if (idx1 === this.size() - 1) {
-        idx1++;
+      if (this.time(idx1) < t1) {
+        ++idx1;
       }
-      if (idx2 === this.size() - 1) {
-        idx2++;
+      if (this.time(idx2) < t2) {
+        ++idx2;
       }
       return new this.constructor(this.data.slice(idx1, idx2));
     };
@@ -372,15 +346,6 @@ MIT License: http://opensource.org/licenses/MIT
       return r;
     };
 
-    NumericTimeseries.prototype.scale = function(width, height) {
-      var scale;
-
-      scale = new Scale(width, height, this);
-      return this.map(function(t, v) {
-        return [scale.x(t), scale.y(v)];
-      });
-    };
-
     NumericTimeseries.prototype.norms = function() {
       var r, t, v, _i, _len, _ref, _ref1;
 
@@ -443,16 +408,17 @@ MIT License: http://opensource.org/licenses/MIT
     };
 
     NumericTimeseries.prototype._distance = function(ts1, ts2) {
-      var idx, sum, v, _i, _len;
+      var diff, i, sum, _i, _ref;
 
-      sum = 0.0;
-      idx = 0;
-      for (_i = 0, _len = ts1.length; _i < _len; _i++) {
-        v = ts1[_i];
-        sum += (ts2[idx] - v) * (ts2[idx] - v);
-        idx++;
+      if (ts1.length !== ts2.length) {
+        throw "Array lengths must match for distance";
       }
-      return sum;
+      sum = 0.0;
+      for (i = _i = 0, _ref = ts1.length - 1; 0 <= _ref ? _i <= _ref : _i >= _ref; i = 0 <= _ref ? ++_i : --_i) {
+        diff = ts2[i] - ts1[i];
+        sum += diff * diff;
+      }
+      return Math.sqrt(sum);
     };
 
     NumericTimeseries.prototype.toString = function() {

@@ -62,21 +62,6 @@ class TimeseriesFactory
 
 factory = new TimeseriesFactory()
 
-
-class Scale
-  constructor: (@width, @height, series) ->
-    [@t1, @t2] = series.domain()
-    [@min, @max] = series.range()
-
-  x: (v) ->
-    ((v - @t1) / (@t2 - @t1)) * @width
-
-  y: (v) ->
-    @height - ((v - @min) / (@max - @min)) * @height
-
-  rx: (v) ->
-    (v / @width) * (@t2 - @t1) + @t1
-
 ###
 #
 #
@@ -148,10 +133,16 @@ class Timeseries
   scan: (t1, t2) ->
     idx1 = @nearest(t1)
     idx2 = @nearest(t2)
-    if idx1 == @size() - 1
-      idx1++
-    if idx2 == @size() - 1
-      idx2++
+
+    # don't include a value not in range
+    if @time(idx1) < t1
+      ++idx1
+
+    # slice goes up to, but doesn't include, so only
+    # add if the nearest is less than
+    if @time(idx2) < t2
+      ++idx2
+
     new @constructor(@data.slice(idx1, idx2))
 
   # filter out items and return new
@@ -285,11 +276,6 @@ class NumericTimeseries extends Timeseries
       r.push v
     r
 
-  # Scale the dataset
-  scale: (width, height) ->
-    scale = new Scale(width, height, @)
-    @map (t, v) -> [scale.x(t), scale.y(v)]
-
   # normalized values as 1d array
   norms: () ->
     r = []
@@ -322,7 +308,6 @@ class NumericTimeseries extends Timeseries
 
   # Find the best fit match for the pattern in the
   # time series.  The data is first normalized
-  # Todo: UCR DTW
   match: (pattern) ->
     unless pattern instanceof Timeseries
       throw "Must match against a Timeseries object"
@@ -339,7 +324,6 @@ class NumericTimeseries extends Timeseries
 
     for i in [0..(source.length - query.length - 1)]
       distance = @_distance(query, source[i..(i + query.length)])
-
       if distance < best
         best = distance
         idx = i
@@ -349,12 +333,13 @@ class NumericTimeseries extends Timeseries
   # Euclidean distance function for one timeseries on another
   # used for pattern searching
   _distance: (ts1, ts2) ->
+    if ts1.length != ts2.length
+      throw "Array lengths must match for distance"
     sum = 0.0
-    idx = 0
-    for v in ts1
-      sum += (ts2[idx] - v) * (ts2[idx] - v)
-      idx++
-    sum
+    for i in [0..ts1.length - 1]
+      diff = ts2[i] - ts1[i]
+      sum += diff * diff
+    Math.sqrt(sum)
 
   # report
   toString: () ->

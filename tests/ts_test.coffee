@@ -89,6 +89,7 @@ runner.test "scan", () ->
   runner.assertEqual 0, ts.scan(-100,-50).size()
   runner.assertEqual 0, ts.scan(ts.last()[0] + 1, ts.last()[0] + 2).size()
   runner.assertEqual ts.size(), ts.scan(-200, ts.last()[0] + 50).size()
+  runner.assertEqual ts.size() - 2, ts.scan(ts.first()[0] + 1, ts.last()[0] - 1).size()
 
 runner.test "give sample", () ->
   runner.assertEqual [time, 1], ts.sample(0)
