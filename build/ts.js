@@ -90,6 +90,7 @@ MIT License: http://opensource.org/licenses/MIT
   Timeseries = (function() {
     function Timeseries(data) {
       this.data = data;
+      this.listeners = [];
     }
 
     Timeseries.prototype.size = function() {
@@ -129,7 +130,27 @@ MIT License: http://opensource.org/licenses/MIT
     };
 
     Timeseries.prototype.append = function(t, v) {
-      return this.data.push([t, v]);
+      if (t < this.end()) {
+        throw "Can't append sample with past timestamp";
+      }
+      this.data.push([t, v]);
+      return this.notify();
+    };
+
+    Timeseries.prototype.notify = function() {
+      var listener, _i, _len, _ref, _results;
+
+      _ref = this.listeners;
+      _results = [];
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        listener = _ref[_i];
+        _results.push(listener());
+      }
+      return _results;
+    };
+
+    Timeseries.prototype.listen = function(fn) {
+      return this.listeners.push(fn);
     };
 
     Timeseries.prototype.values = function() {
@@ -267,8 +288,8 @@ MIT License: http://opensource.org/licenses/MIT
       }
       sum = 0.0;
       sum2 = 0.0;
-      min = 999999999999;
-      max = -min;
+      min = Infinity;
+      max = -Infinity;
       _ref = this.data;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         _ref1 = _ref[_i], t = _ref1[0], v = _ref1[1];
@@ -287,6 +308,19 @@ MIT License: http://opensource.org/licenses/MIT
         max: max,
         sum2: sum2
       };
+    };
+
+    NumericTimeseries.prototype.append = function(t, v) {
+      if (t < this.end()) {
+        throw "Can't append sample with past timestamp";
+      }
+      if (this._stats) {
+        this._stats.sum += v;
+        this._stats.sum2 += v * v;
+        this._stats.min = Math.min(this._stats.min, v);
+        this._stats.max = Math.max(this._stats.max, v);
+      }
+      return NumericTimeseries.__super__.append.call(this, t, v);
     };
 
     NumericTimeseries.prototype.sum = function() {

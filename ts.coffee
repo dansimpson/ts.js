@@ -68,6 +68,7 @@ factory = new TimeseriesFactory()
 ###
 class Timeseries
   constructor: (@data) ->
+    @listeners = []
 
   # the number of samples
   size: () -> 
@@ -107,7 +108,18 @@ class Timeseries
 
   # append another timerseries item
   append: (t, v) ->
+    if t < @end()
+      throw "Can't append sample with past timestamp"
     @data.push [t, v]
+    @notify()
+
+  # notify listeners of a change
+  notify: () ->
+    for listener in @listeners
+      listener()
+
+  listen: (fn) ->
+    @listeners.push(fn)
 
   # values as 1d array
   values: () ->
@@ -212,8 +224,8 @@ class NumericTimeseries extends Timeseries
     
     sum  = 0.0
     sum2 = 0.0
-    min  = 999999999999
-    max  = -min
+    min  = Infinity
+    max  = -Infinity
 
     for [t, v] in @data
       sum  += v
@@ -228,6 +240,17 @@ class NumericTimeseries extends Timeseries
       min : min
       max : max
       sum2: sum2
+
+  # append another timerseries item, updating calcs
+  append: (t, v) ->
+    if t < @end()
+      throw "Can't append sample with past timestamp"
+    if @_stats
+      @_stats.sum += v
+      @_stats.sum2 += v * v
+      @_stats.min = Math.min(@_stats.min, v)
+      @_stats.max = Math.max(@_stats.max, v)
+    super(t, v)
 
   # the sum of all values
   sum: () ->

@@ -38,10 +38,15 @@ runner.test "give last", () ->
 
 runner.test "append", () ->
   size = data.length
-  ts.append 600, 15
-
+  ts.append 600000, 15
   runner.assertEqual size + 1, ts.size()
   runner.assertEqual 15, ts.last()[1]
+
+runner.test "notify", () ->
+  x = false
+  ts.listen () -> x = true
+  ts.append 600000, 15
+  runner.assertTrue x
 
 runner.describe "numeric timeseries"
 
@@ -121,6 +126,16 @@ runner.test "map", () ->
   
   runner.assertEqual 7, mapped.size()
   runner.assertEqual 2, mapped.min()
+
+runner.test "append", () ->
+  sum = ts.statistics().sum
+  sum2 = ts.statistics().sum2
+  ts.append 360001, 1000
+  ts.append 360002, -5
+  runner.assertEqual 1000, ts.max()
+  runner.assertEqual -5, ts.min()
+  runner.assertEqual sum + 1000 - 5, ts.statistics().sum
+  runner.assertEqual sum2 + 1000000 + 25, ts.statistics().sum2
 
 ###
 

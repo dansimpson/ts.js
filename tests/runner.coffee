@@ -77,8 +77,8 @@ class Runner
     catch err
       @errors++
       console.error(@red("☒ #{@suite} didn't #{name}"))
-      if @trace
-        console.log(err.stack)
+      console.log(@red("-> " + err))
+        
 
   report: () ->
     console.log("-------------------")

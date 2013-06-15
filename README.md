@@ -57,8 +57,11 @@ Now you can call any of the following methods, depending on the type of timeseri
 * domain() - get the time frame, earliest and latest timestamp as array [t1, t2]
 * nearest(timestamp) - get the sample closest to the given time (fuzzy search)
 * scan(time1, time2) - get a new timeseries between two dates (using nearest, fuzzy)
+* listen(function() {}) - listen for changes from appending new values
 
-### NumericTimeseries
+### NumericTimeseries extends Timeseries
+
+All timeseries methods with additional methods:
 
 * min() -> min value
 * max() -> max value
@@ -70,7 +73,7 @@ Now you can call any of the following methods, depending on the type of timeseri
 * statistics() -> a collection of stats: min, max, mean, stddev
 * norms() -> vnorms of the values
 * simplify(threshold) -> yield a simplified data set
-* match(ts) -> do a pattern match against the series
+* match(ts) -> do a pattern match against another series
 
 ### MultiTimseries
 
