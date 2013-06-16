@@ -106,6 +106,12 @@ class Timeseries
   domain: () ->
     [@first()[0], @last()[0]]
 
+  # shift the first item off the list and update stats
+  shift: () ->
+    shift = @data.shift()
+    @notify()
+    shift
+
   # append another timerseries item
   append: (t, v) ->
     if t < @end()
@@ -240,6 +246,26 @@ class NumericTimeseries extends Timeseries
       min : min
       max : max
       sum2: sum2
+
+  # shift the first item off the list and update stats
+  shift: () ->
+    first = @data.shift()
+    v = first[1]
+    if @_stats
+      @_stats.sum -= v
+      @_stats.sum2 -= v * v
+      if v == @_stats.min
+        min = Infinity
+        for [t, v] in @data
+          min = Math.min(v, min)
+        @_stats.min = min
+      if v == @_stats.max
+        max = -Infinity
+        for [t, v] in @data
+          max = Math.min(v, max)
+        @_stats.max = max
+    @notify()
+    first
 
   # append another timerseries item, updating calcs
   append: (t, v) ->
@@ -448,6 +474,16 @@ class MultiTimeseries extends Timeseries
     unless @lookup[name]
       throw "Can't get attribute #{name} of multi time series"
     @lookup[name]
+
+  append: (t, v) ->
+    for key, value of v
+      @lookup[key].append(t, value)
+    super(t, v)
+
+  shift: () ->
+    for attr in @attrs
+      @lookup[attr].shift()
+    super()
 
   attr: (name) ->
     @series(name)

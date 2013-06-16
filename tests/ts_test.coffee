@@ -42,6 +42,11 @@ runner.test "append", () ->
   runner.assertEqual size + 1, ts.size()
   runner.assertEqual 15, ts.last()[1]
 
+runner.test "shift", () ->
+  size = ts.size()
+  ts.shift()
+  runner.assertEqual size - 1, ts.size()
+
 runner.test "notify", () ->
   x = false
   ts.listen () -> x = true

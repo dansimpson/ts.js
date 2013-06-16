@@ -129,6 +129,14 @@ MIT License: http://opensource.org/licenses/MIT
       return [this.first()[0], this.last()[0]];
     };
 
+    Timeseries.prototype.shift = function() {
+      var shift;
+
+      shift = this.data.shift();
+      this.notify();
+      return shift;
+    };
+
     Timeseries.prototype.append = function(t, v) {
       if (t < this.end()) {
         throw "Can't append sample with past timestamp";
@@ -308,6 +316,37 @@ MIT License: http://opensource.org/licenses/MIT
         max: max,
         sum2: sum2
       };
+    };
+
+    NumericTimeseries.prototype.shift = function() {
+      var first, max, min, t, v, _i, _j, _len, _len1, _ref, _ref1, _ref2, _ref3;
+
+      first = this.data.shift();
+      v = first[1];
+      if (this._stats) {
+        this._stats.sum -= v;
+        this._stats.sum2 -= v * v;
+        if (v === this._stats.min) {
+          min = Infinity;
+          _ref = this.data;
+          for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+            _ref1 = _ref[_i], t = _ref1[0], v = _ref1[1];
+            min = Math.min(v, min);
+          }
+          this._stats.min = min;
+        }
+        if (v === this._stats.max) {
+          max = -Infinity;
+          _ref2 = this.data;
+          for (_j = 0, _len1 = _ref2.length; _j < _len1; _j++) {
+            _ref3 = _ref2[_j], t = _ref3[0], v = _ref3[1];
+            max = Math.min(v, max);
+          }
+          this._stats.max = max;
+        }
+      }
+      this.notify();
+      return first;
     };
 
     NumericTimeseries.prototype.append = function(t, v) {
@@ -546,6 +585,27 @@ MIT License: http://opensource.org/licenses/MIT
         throw "Can't get attribute " + name + " of multi time series";
       }
       return this.lookup[name];
+    };
+
+    MultiTimeseries.prototype.append = function(t, v) {
+      var key, value;
+
+      for (key in v) {
+        value = v[key];
+        this.lookup[key].append(t, value);
+      }
+      return MultiTimeseries.__super__.append.call(this, t, v);
+    };
+
+    MultiTimeseries.prototype.shift = function() {
+      var attr, _i, _len, _ref;
+
+      _ref = this.attrs;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        attr = _ref[_i];
+        this.lookup[attr].shift();
+      }
+      return MultiTimeseries.__super__.shift.call(this);
     };
 
     MultiTimeseries.prototype.attr = function(name) {

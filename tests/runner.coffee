@@ -83,7 +83,6 @@ class Runner
   report: () ->
     console.log("-------------------")
     if @errors > 0
-
       console.error("#{@red('☒')} #{@errors}/#{@tests} failures")
     else
       console.log("#{@green('☑')} #{@tests} passes, 0 failures")
