@@ -213,6 +213,23 @@ MIT License: http://opensource.org/licenses/MIT
       return new this.constructor(r);
     };
 
+    Timeseries.prototype.split = function(time) {
+      var r1, r2, tv, _i, _len, _ref;
+
+      r1 = [];
+      r2 = [];
+      _ref = this.data;
+      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+        tv = _ref[_i];
+        if (tv[0] <= time) {
+          r1.push(tv);
+        } else {
+          r2.push(tv);
+        }
+      }
+      return [new this.constructor(r1), new this.constructor(r2)];
+    };
+
     Timeseries.prototype.map = function(fn) {
       var r, tv, _i, _len, _ref;
 

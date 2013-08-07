@@ -56,6 +56,7 @@ Now you can call any of the following methods, depending on the type of timeseri
 * time(idx) - get the time at a particular index
 * domain() - get the time frame, earliest and latest timestamp as array [t1, t2]
 * nearest(timestamp) - get the sample closest to the given time (fuzzy search)
+* split(timestamp) - return two new ts objects with events before and after timestamp
 * scan(time1, time2) - get a new timeseries between two dates (using nearest, fuzzy)
 * listen(function() {}) - listen for changes from appending new values
 

@@ -172,6 +172,18 @@ class Timeseries
         r.push tv
     new @constructor(r)
 
+  # split the series into two series
+  split: (time) ->
+    r1 = []
+    r2 = []
+    for tv in @data
+      if tv[0] <= time
+        r1.push(tv)
+      else
+        r2.push(tv)
+    [new @constructor(r1), new @constructor(r2)]
+
+
   map: (fn) ->
     r = []
     for tv in @data

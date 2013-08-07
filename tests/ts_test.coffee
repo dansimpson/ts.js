@@ -47,6 +47,14 @@ runner.test "shift", () ->
   ts.shift()
   runner.assertEqual size - 1, ts.size()
 
+runner.test "split", () ->
+  [t1, t2] = ts.split(300000)
+  console.log t1, t2
+  
+  runner.assertEqual ts.size(), t1.size() + t2.size()
+  runner.assertEqual 5, t1.size()
+  runner.assertEqual 2, t2.size()
+
 runner.test "notify", () ->
   x = false
   ts.listen () -> x = true
