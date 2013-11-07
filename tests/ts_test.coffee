@@ -48,9 +48,7 @@ runner.test "shift", () ->
   runner.assertEqual size - 1, ts.size()
 
 runner.test "split", () ->
-  [t1, t2] = ts.split(300000)
-  console.log t1, t2
-  
+  [t1, t2] = ts.split(300000)  
   runner.assertEqual ts.size(), t1.size() + t2.size()
   runner.assertEqual 5, t1.size()
   runner.assertEqual 2, t2.size()
@@ -117,6 +115,17 @@ runner.test "give value", () ->
 
 runner.test "give time", () ->
   runner.assertEqual time, ts.time(0)
+
+runner.test "median", () ->
+  runner.assertEqual 4, ts.median()
+
+runner.test "sorted values", () ->
+  runner.assertEqual 1, ts.valuesSorted()[0]
+  runner.assertEqual 6, ts.valuesSorted()[ts.valuesSorted().length - 1]
+
+runner.test "rollup", () ->
+  mins = ts.rollup(120000, (time, values) -> Math.min.apply(Math, values))
+  runner.assertEqual [1,3,4,4], mins.values()
 
 runner.test "simplify", () ->
   ts1 = $ts.numeric($ts.timestamp([1,1,1,1,2,1,1,1,1]))

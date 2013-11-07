@@ -75,6 +75,7 @@ All timeseries methods with additional methods:
 * norms() -> vnorms of the values
 * simplify(threshold) -> yield a simplified data set
 * match(ts) -> do a pattern match against another series
+* rollup(duration, function(time, values)) -> create a timeseries with rollup values
 
 ### MultiTimseries
 

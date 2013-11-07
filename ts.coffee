@@ -337,6 +337,38 @@ class NumericTimeseries extends Timeseries
       r.push v
     r
 
+  # return a sorted set of values
+  valuesSorted: () ->
+    return @_valuesSorted if @_valuesSorted
+    @_valuesSorted = @values().sort((a, b) -> a - b)
+
+  median: () ->
+    half = Math.floor(@size() / 2)
+    if @size() % 2
+      @valuesSorted()[half]
+    else
+      (@valuesSorted()[half - 1] + @valuesSorted()[half]) / 2
+
+  # takes a duration and function.  The function must 
+  # accept a timestamp and data array parameter
+  # eg: function(time, values) and return a single value
+  rollup: (duration, fn) ->
+    result = []
+    t1 = @start()
+    block = [] 
+    for [t, v] in @data
+      if t - t1 >= duration
+        result.push [t1, fn(t1, block)]
+        block = []
+        t1 = t
+      block.push v
+
+    if block.length > 0
+      result.push [t1, fn(t1, block)]
+
+    new @constructor(result)
+
+
   # normalized values as 1d array
   norms: () ->
     r = []
