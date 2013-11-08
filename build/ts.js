@@ -9,7 +9,7 @@ MIT License: http://opensource.org/licenses/MIT
 
 
 (function() {
-  var MultiTimeseries, NumericTimeseries, Timeseries, TimeseriesFactory, factory, root,
+  var Buffer, MultiTimeseries, NumericTimeseries, Timeseries, TimeseriesFactory, factory, root,
     __hasProp = {}.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; };
 
@@ -74,11 +74,49 @@ MIT License: http://opensource.org/licenses/MIT
       }
     };
 
+    TimeseriesFactory.prototype.buffer = function(data) {
+      if (data == null) {
+        data = [];
+      }
+      return new Buffer(data);
+    };
+
     return TimeseriesFactory;
 
   })();
 
   factory = new TimeseriesFactory();
+
+  Buffer = (function() {
+    function Buffer(data) {
+      this.data = data != null ? data : [];
+    }
+
+    Buffer.prototype.append = function(data) {
+      if (!(data instanceof Array)) {
+        throw "Buffer.append expects array: [t,v] or [[t,v],[t,v]]";
+      }
+      if (data[0] instanceof Array) {
+        return this.data = this.data.concat(data);
+      } else {
+        return this.data.push(data);
+      }
+    };
+
+    Buffer.prototype.shift = function(count) {
+      var result;
+      result = this.data.slice(0, count);
+      this.data = this.data.slice(count, this.size());
+      return result;
+    };
+
+    Buffer.prototype.size = function() {
+      return this.data.length;
+    };
+
+    return Buffer;
+
+  })();
 
   /*
   #
@@ -89,6 +127,7 @@ MIT License: http://opensource.org/licenses/MIT
   Timeseries = (function() {
     function Timeseries(data) {
       this.data = data;
+      this.squelched = false;
       this.listeners = [];
     }
 
@@ -135,6 +174,10 @@ MIT License: http://opensource.org/licenses/MIT
       return shift;
     };
 
+    Timeseries.prototype.pop = function() {
+      return this.shift();
+    };
+
     Timeseries.prototype.append = function(t, v) {
       if (t < this.end()) {
         throw "Can't append sample with past timestamp";
@@ -143,8 +186,65 @@ MIT License: http://opensource.org/licenses/MIT
       return this.notify();
     };
 
+    Timeseries.prototype.push = function(t, v) {
+      return this.append(t, v);
+    };
+
+    Timeseries.prototype.add = function(t, v) {
+      return this.append(t, v);
+    };
+
+    Timeseries.prototype.pushpop = function(t, v, limit) {
+      if (limit == null) {
+        limit = 0;
+      }
+      this.squelched = true;
+      this.append(t, v);
+      if (limit > 0) {
+        while (this.size() > limit) {
+          this.shift();
+        }
+      }
+      this.squelched = false;
+      return this.notify;
+    };
+
+    Timeseries.prototype.streambuf = function(pps, maxEvents) {
+      var _this = this;
+      if (pps == null) {
+        pps = 60;
+      }
+      if (maxEvents == null) {
+        maxEvents = 0;
+      }
+      this.buffer = $ts.buffer();
+      this.interval = setInterval(function() {
+        var t, v, x, _i, _j, _len, _ref, _ref1, _ref2;
+        if (_this.buffer.size() === 0) {
+          return;
+        }
+        _this.squelched = true;
+        _ref = _this.buffer.shift(Math.ceil(_this.buffer.size() / pps));
+        for (_i = 0, _len = _ref.length; _i < _len; _i++) {
+          _ref1 = _ref[_i], t = _ref1[0], v = _ref1[1];
+          _this.append(t, v);
+        }
+        if (_this.size() > maxEvents) {
+          for (x = _j = 0, _ref2 = _this.size() - maxEvents; 0 <= _ref2 ? _j <= _ref2 : _j >= _ref2; x = 0 <= _ref2 ? ++_j : --_j) {
+            _this.shift();
+          }
+        }
+        _this.squelched = false;
+        return _this.notify();
+      }, 1000 / pps);
+      return this.buffer;
+    };
+
     Timeseries.prototype.notify = function() {
       var listener, _i, _len, _ref, _results;
+      if (this.squelched) {
+        return;
+      }
       _ref = this.listeners;
       _results = [];
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
@@ -457,7 +557,7 @@ MIT License: http://opensource.org/licenses/MIT
         block.push(v);
       }
       if (block.length > 0) {
-        result.push([t1, fn(t1, block)]);
+        result.push([t1 + (duration / 2), fn(t1, block)]);
       }
       return new this.constructor(result);
     };

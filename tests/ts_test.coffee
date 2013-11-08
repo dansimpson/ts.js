@@ -13,6 +13,23 @@ runner.test "index data", () ->
 
 ############################
 
+runner.describe "buffer"
+
+runner.test "build", () ->
+  runner.assertEqual "Buffer", $ts.buffer().constructor.name
+
+runner.test "append", () ->
+  buf = $ts.buffer()
+  buf.append([0, 5])
+  runner.assertEqual 1, buf.size()
+
+runner.test "shift", () ->
+  buf = $ts.buffer()
+  buf.append([[0, 5], [1, 6]])
+  runner.assertEqual 2, buf.size()
+  runner.assertEqual [0, 5], buf.shift(1)[0]
+  runner.assertEqual [1, 6], buf.data[0]
+
 runner.describe "basic timeseries"
 
 time = 0

@@ -60,7 +60,32 @@ class TimeseriesFactory
     else
       @multi(data)
 
+  buffer: (data=[]) ->
+    new Buffer(data)
+
 factory = new TimeseriesFactory()
+
+
+# Small buffer class used for limiting the rate of appending
+class Buffer
+  constructor: (@data=[]) ->
+
+  append: (data) ->
+    unless data instanceof Array
+      throw "Buffer.append expects array: [t,v] or [[t,v],[t,v]]"
+    
+    if data[0] instanceof Array
+      @data = @data.concat(data)
+    else
+      @data.push data
+
+  shift: (count) ->
+    result = @data.slice(0, count)
+    @data  = @data.slice(count, @size())
+    result
+
+  size: () ->
+    @data.length
 
 ###
 #
@@ -68,6 +93,7 @@ factory = new TimeseriesFactory()
 ###
 class Timeseries
   constructor: (@data) ->
+    @squelched = false
     @listeners = []
 
   # the number of samples
@@ -112,6 +138,10 @@ class Timeseries
     @notify()
     shift
 
+  # see shift
+  pop: () ->
+    @shift()
+
   # append another timerseries item
   append: (t, v) ->
     if t < @end()
@@ -119,8 +149,46 @@ class Timeseries
     @data.push [t, v]
     @notify()
 
+  # see append
+  push: (t, v) ->
+    @append(t, v)
+
+  # see append
+  add: (t, v) ->
+    @append(t, v)
+
+  # push a value, and pop the head if the size > limit (0=no limit)
+  pushpop: (t, v, limit=0) ->
+    @squelched = true
+    @append(t, v)
+    if limit > 0
+      while @size() > limit
+        @shift()
+    @squelched = false
+    @notify
+
+  # create a streaming buffer which limits the rate
+  # at which points are added to the data set
+  streambuf: (pps=60, maxEvents=0) ->
+    @buffer = $ts.buffer()
+    @interval = setInterval () =>
+      return if @buffer.size() == 0
+      @squelched = true
+      for [t, v] in @buffer.shift(Math.ceil(@buffer.size() / pps))
+        @append(t, v)
+      if @size() > maxEvents
+        for x in [0..(@size() - maxEvents)]
+          @shift()
+      @squelched = false
+      @notify()
+    , 1000 / pps
+    @buffer
+
   # notify listeners of a change
   notify: () ->
+    if @squelched
+      return
+
     for listener in @listeners
       listener()
 
@@ -353,18 +421,19 @@ class NumericTimeseries extends Timeseries
   # accept a timestamp and data array parameter
   # eg: function(time, values) and return a single value
   rollup: (duration, fn) ->
+    offset = duration / 2
     result = []
     t1 = @start()
     block = [] 
     for [t, v] in @data
       if t - t1 >= duration
-        result.push [t1, fn(t1, block)]
+        result.push [t1 + offset, fn(t1, block)]
         block = []
         t1 = t
       block.push v
 
     if block.length > 0
-      result.push [t1, fn(t1, block)]
+      result.push [t1 + offset, fn(t1, block)]
 
     new @constructor(result)
 
