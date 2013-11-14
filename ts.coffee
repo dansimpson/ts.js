@@ -342,7 +342,7 @@ class NumericTimeseries extends Timeseries
       if v == @_stats.max
         max = -Infinity
         for [t, v] in @data
-          max = Math.min(v, max)
+          max = Math.max(v, max)
         @_stats.max = max
     @notify()
     first

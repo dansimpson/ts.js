@@ -445,7 +445,7 @@ MIT License: http://opensource.org/licenses/MIT
           _ref2 = this.data;
           for (_j = 0, _len1 = _ref2.length; _j < _len1; _j++) {
             _ref3 = _ref2[_j], t = _ref3[0], v = _ref3[1];
-            max = Math.min(v, max);
+            max = Math.max(v, max);
           }
           this._stats.max = max;
         }
@@ -542,7 +542,8 @@ MIT License: http://opensource.org/licenses/MIT
     };
 
     NumericTimeseries.prototype.rollup = function(duration, fn) {
-      var block, result, t, t1, v, _i, _len, _ref, _ref1;
+      var block, offset, result, t, t1, v, _i, _len, _ref, _ref1;
+      offset = duration / 2;
       result = [];
       t1 = this.start();
       block = [];
@@ -550,14 +551,14 @@ MIT License: http://opensource.org/licenses/MIT
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         _ref1 = _ref[_i], t = _ref1[0], v = _ref1[1];
         if (t - t1 >= duration) {
-          result.push([t1, fn(t1, block)]);
+          result.push([t1 + offset, fn(t1, block)]);
           block = [];
           t1 = t;
         }
         block.push(v);
       }
       if (block.length > 0) {
-        result.push([t1 + (duration / 2), fn(t1, block)]);
+        result.push([t1 + offset, fn(t1, block)]);
       }
       return new this.constructor(result);
     };
