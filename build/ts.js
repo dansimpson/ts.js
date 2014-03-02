@@ -206,7 +206,7 @@ MIT License: http://opensource.org/licenses/MIT
         }
       }
       this.squelched = false;
-      return this.notify;
+      return this.notify();
     };
 
     Timeseries.prototype.streambuf = function(pps, maxEvents) {
@@ -541,8 +541,12 @@ MIT License: http://opensource.org/licenses/MIT
       }
     };
 
-    NumericTimeseries.prototype.rollup = function(duration, fn) {
-      var block, offset, result, t, t1, v, _i, _len, _ref, _ref1;
+    NumericTimeseries.prototype.rollup = function(duration, fn, stream) {
+      var block, offset, result, rollup, t, t1, time, v, _i, _len, _ref, _ref1,
+        _this = this;
+      if (stream == null) {
+        stream = false;
+      }
       offset = duration / 2;
       result = [];
       t1 = this.start();
@@ -560,7 +564,20 @@ MIT License: http://opensource.org/licenses/MIT
       if (block.length > 0) {
         result.push([t1 + offset, fn(t1, block)]);
       }
-      return new this.constructor(result);
+      rollup = new this.constructor(result);
+      if (stream) {
+        time = this.last();
+        console.log("S");
+        setInterval(function() {
+          var chunk;
+          chunk = _this.scan(time, time += duration);
+          if (chunk.size() > 0) {
+            rollup.append([time, fn(time, chunk.values())]);
+          }
+          return time += duration;
+        }, duration);
+      }
+      return rollup;
     };
 
     NumericTimeseries.prototype.norms = function() {

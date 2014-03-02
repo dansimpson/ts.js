@@ -165,7 +165,7 @@ class Timeseries
       while @size() > limit
         @shift()
     @squelched = false
-    @notify
+    @notify()
 
   # create a streaming buffer which limits the rate
   # at which points are added to the data set
@@ -419,8 +419,8 @@ class NumericTimeseries extends Timeseries
 
   # takes a duration and function.  The function must 
   # accept a timestamp and data array parameter
-  # eg: function(time, values) and return a single value
-  rollup: (duration, fn) ->
+  # eg: function(time, values) { return mean(values) } and return a single value
+  rollup: (duration, fn, stream=false) ->
     offset = duration / 2
     result = []
     t1 = @start()
@@ -435,7 +435,22 @@ class NumericTimeseries extends Timeseries
     if block.length > 0
       result.push [t1 + offset, fn(t1, block)]
 
-    new @constructor(result)
+    rollup = new @constructor(result)
+
+    # a streaming rollup will push data to rolled up
+    # stream as it's emitted from the source stream
+    if stream
+      time = @last()
+      console.log("S")
+      setInterval () =>
+        # TODO: Optimize
+        chunk = @scan(time, time += duration)
+        if chunk.size() > 0
+          rollup.append([time, fn(time, chunk.values())])
+        time += duration
+      , duration
+
+    rollup
 
 
   # normalized values as 1d array
