@@ -34,20 +34,23 @@ class TimeseriesFactory
     r
 
   # Wrap 2d array of timeseries data in a Timeseries object
-  wrap: (data) ->
-    @validate(data)
+  wrap: (data, validate=true) ->
+    if validate
+      @validate(data)
     new Timeseries(data)
 
   # Create a NumericTimeseries object, capable basic plotting, etc
-  numeric: (data) ->
-    @validate(data)
-    if typeof(data[0][1]) != "number"
-      throw "NumericTimeseries expects timestamps and numbers; eg: [[timestamp, number]...]"
+  numeric: (data, validate=true) ->
+    if validate
+      @validate(data)
+      if typeof(data[0][1]) != "number"
+        throw "NumericTimeseries expects timestamps and numbers; eg: [[timestamp, number]...]"
     new NumericTimeseries(data)
 
   # create a MultiTimeseries object with the data
-  multi: (data) ->
-    @validate(data)
+  multi: (data, validate=true) ->
+    if validate
+      @validate(data)
     new MultiTimeseries(data)
 
   # Guess what kind of data we are working with

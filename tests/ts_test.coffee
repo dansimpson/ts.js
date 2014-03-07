@@ -85,6 +85,9 @@ ts   = $ts.numeric(data)
 runner.test "numeric builder", () ->
   runner.assertEqual "NumericTimeseries", $ts.build(data).constructor.name
 
+runner.test "numeric empty", () ->
+  runner.assertEqual 0, $ts.numeric([], false).size()
+
 runner.test "calc min", () ->
   runner.assertEqual 1, ts.min()
 

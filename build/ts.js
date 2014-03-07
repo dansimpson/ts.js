@@ -45,21 +45,36 @@ MIT License: http://opensource.org/licenses/MIT
       return r;
     };
 
-    TimeseriesFactory.prototype.wrap = function(data) {
-      this.validate(data);
+    TimeseriesFactory.prototype.wrap = function(data, validate) {
+      if (validate == null) {
+        validate = true;
+      }
+      if (validate) {
+        this.validate(data);
+      }
       return new Timeseries(data);
     };
 
-    TimeseriesFactory.prototype.numeric = function(data) {
-      this.validate(data);
-      if (typeof data[0][1] !== "number") {
-        throw "NumericTimeseries expects timestamps and numbers; eg: [[timestamp, number]...]";
+    TimeseriesFactory.prototype.numeric = function(data, validate) {
+      if (validate == null) {
+        validate = true;
+      }
+      if (validate) {
+        this.validate(data);
+        if (typeof data[0][1] !== "number") {
+          throw "NumericTimeseries expects timestamps and numbers; eg: [[timestamp, number]...]";
+        }
       }
       return new NumericTimeseries(data);
     };
 
-    TimeseriesFactory.prototype.multi = function(data) {
-      this.validate(data);
+    TimeseriesFactory.prototype.multi = function(data, validate) {
+      if (validate == null) {
+        validate = true;
+      }
+      if (validate) {
+        this.validate(data);
+      }
       return new MultiTimeseries(data);
     };
 
