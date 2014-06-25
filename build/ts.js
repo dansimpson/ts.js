@@ -189,6 +189,13 @@ MIT License: http://opensource.org/licenses/MIT
       return shift;
     };
 
+    Timeseries.prototype.slide = function(t, v) {
+      var shift;
+      shift = this.data.shift();
+      this.append(t, v);
+      return shift;
+    };
+
     Timeseries.prototype.pop = function() {
       return this.shift();
     };
@@ -411,19 +418,17 @@ MIT License: http://opensource.org/licenses/MIT
     }
 
     NumericTimeseries.prototype.statistics = function() {
-      var max, min, sum, sum2, t, v, _i, _len, _ref, _ref1;
+      var max, min, sum, t, v, _i, _len, _ref, _ref1;
       if (this._stats) {
         return this._stats;
       }
       sum = 0.0;
-      sum2 = 0.0;
       min = Infinity;
       max = -Infinity;
       _ref = this.data;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         _ref1 = _ref[_i], t = _ref1[0], v = _ref1[1];
         sum += v;
-        sum2 += v * v;
         if (v > max) {
           max = v;
         }
@@ -434,8 +439,7 @@ MIT License: http://opensource.org/licenses/MIT
       return this._stats = {
         sum: sum,
         min: min,
-        max: max,
-        sum2: sum2
+        max: max
       };
     };
 
@@ -445,7 +449,6 @@ MIT License: http://opensource.org/licenses/MIT
       v = first[1];
       if (this._stats) {
         this._stats.sum -= v;
-        this._stats.sum2 -= v * v;
         if (v === this._stats.min) {
           min = Infinity;
           _ref = this.data;
@@ -475,7 +478,6 @@ MIT License: http://opensource.org/licenses/MIT
       }
       if (this._stats) {
         this._stats.sum += v;
-        this._stats.sum2 += v * v;
         this._stats.min = Math.min(this._stats.min, v);
         this._stats.max = Math.max(this._stats.max, v);
       }
@@ -487,23 +489,24 @@ MIT License: http://opensource.org/licenses/MIT
     };
 
     NumericTimeseries.prototype.sumsq = function() {
-      return this.statistics().sum2;
-    };
-
-    NumericTimeseries.prototype.variance = function() {
-      var n, r, t, v, _i, _len, _ref, _ref1;
+      var m, n, r, t, v, _i, _len, _ref, _ref1;
+      m = this.mean();
       r = 0;
       _ref = this.data;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         _ref1 = _ref[_i], t = _ref1[0], v = _ref1[1];
-        n = v - this.mean();
+        n = v - m;
         r += n * n;
       }
-      return r / (this.size() - 1);
+      return r;
+    };
+
+    NumericTimeseries.prototype.variance = function() {
+      return this.sumsq() / (this.size() - 1);
     };
 
     NumericTimeseries.prototype.stddev = function() {
-      return Math.sqrt((this.sumsq() / this.size()) / (this.mean() * this.mean()));
+      return Math.sqrt(this.variance());
     };
 
     NumericTimeseries.prototype.mean = function() {
@@ -570,24 +573,23 @@ MIT License: http://opensource.org/licenses/MIT
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         _ref1 = _ref[_i], t = _ref1[0], v = _ref1[1];
         if (t - t1 >= duration) {
-          result.push([t1 + offset, fn(t1, block)]);
+          result.push([t1 + offset, fn($ts.build(block))]);
           block = [];
           t1 = t;
         }
-        block.push(v);
+        block.push([t, v]);
       }
       if (block.length > 0) {
-        result.push([t1 + offset, fn(t1, block)]);
+        result.push([t1 + offset, fn($ts.build(block))]);
       }
-      rollup = new this.constructor(result);
+      rollup = $ts.build(result);
       if (stream) {
-        time = this.last();
-        console.log("S");
+        time = this.end();
         setInterval(function() {
           var chunk;
-          chunk = _this.scan(time, time += duration);
+          chunk = _this.scan(time, time + duration);
           if (chunk.size() > 0) {
-            rollup.append([time, fn(time, chunk.values())]);
+            rollup.slide(time + duration, fn(chunk));
           }
           return time += duration;
         }, duration);
@@ -628,7 +630,7 @@ MIT License: http://opensource.org/licenses/MIT
       if (last[0] !== r[r.length - 1][0]) {
         r.push(last);
       }
-      return new Timeseries(r);
+      return $ts.build(r);
     };
 
     NumericTimeseries.prototype.match = function(pattern) {
@@ -749,6 +751,15 @@ MIT License: http://opensource.org/licenses/MIT
         throw "Can't get attribute " + name + " of multi time series";
       }
       return this.lookup[name];
+    };
+
+    MultiTimeseries.prototype.slide = function(t, v) {
+      var key, value;
+      for (key in v) {
+        value = v[key];
+        this.lookup[key].slide(t, value);
+      }
+      return MultiTimeseries.__super__.slide.call(this, t, v);
     };
 
     MultiTimeseries.prototype.append = function(t, v) {
