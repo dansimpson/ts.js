@@ -424,32 +424,31 @@ class NumericTimeseries extends Timeseries
   # accept a timestamp and data array parameter
   # eg: function(time, values) { return mean(values) } and return a single value
   rollup: (duration, fn, stream=false) ->
-    offset = duration / 2
+
+    time   = @start() - (@start() % duration)
     result = []
-    t1 = @start()
-    block = [] 
+    chunk  = []
     for [t, v] in @data
-      if t - t1 >= duration
-        result.push [t1 + offset, fn($ts.build(block))]
-        block = []
-        t1 = t
-      block.push [t, v]
+      while t - time >= duration
+        result.push [time, fn(time, chunk)]
+        chunk = []
+        time += duration
+      chunk.push [v]
 
-    if block.length > 0
-      result.push [t1 + offset, fn($ts.build(block))]
 
-    rollup = $ts.build(result)
+    if chunk.length > 0
+      result.push [time, fn(time, chunk)]
+
+    rollup = factory.build(result)
 
     # a streaming rollup will push data to rolled up
     # stream as it's emitted from the source stream
     if stream
-      time = @end()
-
-      # @listen () =>
+      time += duration
       setInterval () =>
         chunk = @scan(time, time + duration)
         if chunk.size() > 0
-          rollup.slide(time + duration, fn(chunk))
+          rollup.slide(time, fn(time, chunk))
         time += duration
       , duration
 
@@ -484,7 +483,7 @@ class NumericTimeseries extends Timeseries
     if last[0] != r[r.length - 1][0]
       r.push last
 
-    $ts.build(r)
+    factory.build(r)
 
   # Find the best fit match for the pattern in the
   # time series.  The data is first normalized

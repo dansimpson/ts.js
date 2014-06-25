@@ -560,36 +560,34 @@ MIT License: http://opensource.org/licenses/MIT
     };
 
     NumericTimeseries.prototype.rollup = function(duration, fn, stream) {
-      var block, offset, result, rollup, t, t1, time, v, _i, _len, _ref, _ref1,
+      var chunk, result, rollup, t, time, v, _i, _len, _ref, _ref1,
         _this = this;
       if (stream == null) {
         stream = false;
       }
-      offset = duration / 2;
+      time = this.start() - (this.start() % duration);
       result = [];
-      t1 = this.start();
-      block = [];
+      chunk = [];
       _ref = this.data;
       for (_i = 0, _len = _ref.length; _i < _len; _i++) {
         _ref1 = _ref[_i], t = _ref1[0], v = _ref1[1];
-        if (t - t1 >= duration) {
-          result.push([t1 + offset, fn($ts.build(block))]);
-          block = [];
-          t1 = t;
+        while (t - time >= duration) {
+          result.push([time, fn(time, chunk)]);
+          chunk = [];
+          time += duration;
         }
-        block.push([t, v]);
+        chunk.push([v]);
       }
-      if (block.length > 0) {
-        result.push([t1 + offset, fn($ts.build(block))]);
+      if (chunk.length > 0) {
+        result.push([time, fn(time, chunk)]);
       }
-      rollup = $ts.build(result);
+      rollup = factory.build(result);
       if (stream) {
-        time = this.end();
+        time += duration;
         setInterval(function() {
-          var chunk;
           chunk = _this.scan(time, time + duration);
           if (chunk.size() > 0) {
-            rollup.slide(time + duration, fn(chunk));
+            rollup.slide(time, fn(time, chunk));
           }
           return time += duration;
         }, duration);
@@ -630,7 +628,7 @@ MIT License: http://opensource.org/licenses/MIT
       if (last[0] !== r[r.length - 1][0]) {
         r.push(last);
       }
-      return $ts.build(r);
+      return factory.build(r);
     };
 
     NumericTimeseries.prototype.match = function(pattern) {
