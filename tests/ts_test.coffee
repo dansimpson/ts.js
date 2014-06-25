@@ -104,13 +104,13 @@ runner.test "compute sum", () ->
   runner.assertEqual 24, ts.sum()
 
 runner.test "compute sumsq", () ->
-  runner.assertEqual 98, ts.sumsq()
+  runner.assertEqual 15.71, ts.sumsq(), 0.1
 
 runner.test "compute variance", () ->
   runner.assertEqual 2.619, ts.variance(), 0.1
 
 runner.test "compute stddev", () ->
-  runner.assertEqual 1.09, ts.stddev(), 0.1
+  runner.assertEqual 1.61, ts.stddev(), 0.1
 
 runner.test "compute nearest", () ->
   runner.assertEqual 0, ts.nearest(-1000)
@@ -144,7 +144,8 @@ runner.test "sorted values", () ->
   runner.assertEqual 6, ts.valuesSorted()[ts.valuesSorted().length - 1]
 
 runner.test "rollup", () ->
-  mins = ts.rollup(120000, (time, values) -> Math.min.apply(Math, values))
+  fn = (time, values) -> Math.min.apply(Math, values)
+  mins = ts.rollup(120000, fn)
   runner.assertEqual [1,3,4,4], mins.values()
 
 runner.test "simplify", () ->
@@ -171,13 +172,11 @@ runner.test "map", () ->
 
 runner.test "append", () ->
   sum = ts.statistics().sum
-  sum2 = ts.statistics().sum2
   ts.append 360001, 1000
   ts.append 360002, -5
   runner.assertEqual 1000, ts.max()
   runner.assertEqual -5, ts.min()
   runner.assertEqual sum + 1000 - 5, ts.statistics().sum
-  runner.assertEqual sum2 + 1000000 + 25, ts.statistics().sum2
 
 ###
 

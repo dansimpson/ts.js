@@ -68,7 +68,6 @@ class TimeseriesFactory
 
 factory = new TimeseriesFactory()
 
-
 # Small buffer class used for limiting the rate of appending
 class Buffer
   constructor: (@data=[]) ->
@@ -139,6 +138,11 @@ class Timeseries
   shift: () ->
     shift = @data.shift()
     @notify()
+    shift
+
+  slide: (t, v) ->
+    shift = @data.shift()
+    @append(t, v)
     shift
 
   # see shift
@@ -312,13 +316,11 @@ class NumericTimeseries extends Timeseries
     return @_stats if @_stats
     
     sum  = 0.0
-    sum2 = 0.0
     min  = Infinity
     max  = -Infinity
 
     for [t, v] in @data
-      sum  += v
-      sum2 += v * v
+      sum += v
       if v > max
         max = v
       if v < min
@@ -328,7 +330,6 @@ class NumericTimeseries extends Timeseries
       sum : sum
       min : min
       max : max
-      sum2: sum2
 
   # shift the first item off the list and update stats
   shift: () ->
@@ -336,7 +337,6 @@ class NumericTimeseries extends Timeseries
     v = first[1]
     if @_stats
       @_stats.sum -= v
-      @_stats.sum2 -= v * v
       if v == @_stats.min
         min = Infinity
         for [t, v] in @data
@@ -356,7 +356,6 @@ class NumericTimeseries extends Timeseries
       throw "Can't append sample with past timestamp"
     if @_stats
       @_stats.sum += v
-      @_stats.sum2 += v * v
       @_stats.min = Math.min(@_stats.min, v)
       @_stats.max = Math.max(@_stats.max, v)
     super(t, v)
@@ -365,21 +364,22 @@ class NumericTimeseries extends Timeseries
   sum: () ->
     @statistics().sum
 
-  # the sum of all squared values
+  # the sum of squares
   sumsq: () ->
-    @statistics().sum2
+    m = @mean()
+    r = 0
+    for [t, v] in @data
+      n  = v - m
+      r += n * n
+    r
 
   # variance of the values
   variance: () ->
-    r = 0
-    for [t, v] in @data
-      n  = v - @mean()
-      r += n * n
-    r / (@size() - 1)
+    @sumsq() / (@size() - 1)
 
   # standard deviation of the values
   stddev: () ->
-    Math.sqrt((@sumsq() / @size()) / (@mean() * @mean()))
+    Math.sqrt(@variance())
 
   # mean of value
   mean: () ->
@@ -424,32 +424,31 @@ class NumericTimeseries extends Timeseries
   # accept a timestamp and data array parameter
   # eg: function(time, values) { return mean(values) } and return a single value
   rollup: (duration, fn, stream=false) ->
-    offset = duration / 2
+
+    time   = @start() - (@start() % duration)
     result = []
-    t1 = @start()
-    block = [] 
+    chunk  = []
     for [t, v] in @data
-      if t - t1 >= duration
-        result.push [t1 + offset, fn(t1, block)]
-        block = []
-        t1 = t
-      block.push v
+      while t - time >= duration
+        result.push [time, fn(time, chunk)]
+        chunk = []
+        time += duration
+      chunk.push [v]
 
-    if block.length > 0
-      result.push [t1 + offset, fn(t1, block)]
 
-    rollup = new @constructor(result)
+    if chunk.length > 0
+      result.push [time, fn(time, chunk)]
+
+    rollup = factory.build(result)
 
     # a streaming rollup will push data to rolled up
     # stream as it's emitted from the source stream
     if stream
-      time = @last()
-      console.log("S")
+      time += duration
       setInterval () =>
-        # TODO: Optimize
-        chunk = @scan(time, time += duration)
+        chunk = @scan(time, time + duration)
         if chunk.size() > 0
-          rollup.append([time, fn(time, chunk.values())])
+          rollup.slide(time, fn(time, chunk))
         time += duration
       , duration
 
@@ -484,7 +483,7 @@ class NumericTimeseries extends Timeseries
     if last[0] != r[r.length - 1][0]
       r.push last
 
-    new Timeseries(r)
+    factory.build(r)
 
   # Find the best fit match for the pattern in the
   # time series.  The data is first normalized
@@ -602,6 +601,11 @@ class MultiTimeseries extends Timeseries
     unless @lookup[name]
       throw "Can't get attribute #{name} of multi time series"
     @lookup[name]
+
+  slide: (t, v) ->
+    for key, value of v
+      @lookup[key].slide(t, value)
+    super(t, v)
 
   append: (t, v) ->
     for key, value of v
