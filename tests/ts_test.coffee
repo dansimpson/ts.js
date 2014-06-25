@@ -233,7 +233,7 @@ data = [
   { v1: 1, v2: { x: 2, y: 1 } },
   { v1: 2, v2: { x: 4, y: 1 } },
   { v1: 3, v2: { x: 6, y: 1 } },
-  { v1: 6, v2: { x: 12, y: 1 } },
+  { v1: 6, v2: { x: 12, y: 1 }, v3: "event" },
   { v1: 4, v2: { x: 8, y: 1 } },
   { v1: 4, v2: { x: 8, y: 1 } },
   { v1: 4, v2: { x: 8, y: 1 } }
@@ -250,3 +250,6 @@ runner.test "path double", () ->
 
 runner.test "multi builder", () ->
   runner.assertEqual "MultiTimeseries", $ts.build(data).constructor.name
+
+runner.test "dynamic schema", () ->
+  runner.assertEqual "event", ts.series("/v3").value(0)

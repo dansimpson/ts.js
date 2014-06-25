@@ -571,21 +571,18 @@ class MultiTimeseries extends Timeseries
     # Take those values and split them into singular ts
     @lookup = {}
     @attrs = []
-    for key, value of data[0][1]
-      @attrs.push(key)
-      @lookup[key] = []
 
     # add items to each sub array
     for point in data
       for key, value of point[1]
+        unless @lookup.hasOwnProperty(key)
+          @lookup[key] = []
+          @attrs.push(key)
         @lookup[key].push([point[0], value])
     
-    # Conver array to actual ts, nested if need be
+    # Convert array to ts oject, nested if need be
     for key, value of @lookup
-      if typeof(@lookup[key][0][1]) == "number"
-        @lookup[key] = factory.numeric(@lookup[key])
-      else
-        @lookup[key] = factory.multi(@lookup[key])
+      @lookup[key] = factory.build(@lookup[key])
 
   # find a series by name or path
   # eg: mts.series("hits")
@@ -608,9 +605,14 @@ class MultiTimeseries extends Timeseries
 
   append: (t, v) ->
     for key, value of v
-      @lookup[key].append(t, value)
+      if @lookup.hasOwnProperty(key)
+        @lookup[key].append(t, value)
+      else
+        @lookup[key] = factory.build([[t, value]])
+        @attrs.push(key)
     super(t, v)
 
+  # TODO: Move to a fixed "window"
   shift: () ->
     for attr in @attrs
       @lookup[attr].shift()
@@ -618,6 +620,10 @@ class MultiTimeseries extends Timeseries
 
   attr: (name) ->
     @series(name)
+
+  serieses: () ->
+    @attrs
+
 
 # expose the factory
 root = if typeof module != "undefined" && module.exports

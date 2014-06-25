@@ -708,33 +708,27 @@ MIT License: http://opensource.org/licenses/MIT
     __extends(MultiTimeseries, _super);
 
     function MultiTimeseries(data) {
-      var key, point, value, _i, _len, _ref, _ref1, _ref2;
+      var key, point, value, _i, _len, _ref, _ref1;
       this.data = data;
       MultiTimeseries.__super__.constructor.call(this, this.data);
       this.lookup = {};
       this.attrs = [];
-      _ref = data[0][1];
-      for (key in _ref) {
-        value = _ref[key];
-        this.attrs.push(key);
-        this.lookup[key] = [];
-      }
       for (_i = 0, _len = data.length; _i < _len; _i++) {
         point = data[_i];
-        _ref1 = point[1];
-        for (key in _ref1) {
-          value = _ref1[key];
+        _ref = point[1];
+        for (key in _ref) {
+          value = _ref[key];
+          if (!this.lookup.hasOwnProperty(key)) {
+            this.lookup[key] = [];
+            this.attrs.push(key);
+          }
           this.lookup[key].push([point[0], value]);
         }
       }
-      _ref2 = this.lookup;
-      for (key in _ref2) {
-        value = _ref2[key];
-        if (typeof this.lookup[key][0][1] === "number") {
-          this.lookup[key] = factory.numeric(this.lookup[key]);
-        } else {
-          this.lookup[key] = factory.multi(this.lookup[key]);
-        }
+      _ref1 = this.lookup;
+      for (key in _ref1) {
+        value = _ref1[key];
+        this.lookup[key] = factory.build(this.lookup[key]);
       }
     }
 
@@ -761,7 +755,12 @@ MIT License: http://opensource.org/licenses/MIT
       var key, value;
       for (key in v) {
         value = v[key];
-        this.lookup[key].append(t, value);
+        if (this.lookup.hasOwnProperty(key)) {
+          this.lookup[key].append(t, value);
+        } else {
+          this.lookup[key] = factory.build([[t, value]]);
+          this.attrs.push(key);
+        }
       }
       return MultiTimeseries.__super__.append.call(this, t, v);
     };
@@ -778,6 +777,10 @@ MIT License: http://opensource.org/licenses/MIT
 
     MultiTimeseries.prototype.attr = function(name) {
       return this.series(name);
+    };
+
+    MultiTimeseries.prototype.serieses = function() {
+      return this.attrs;
     };
 
     return MultiTimeseries;
