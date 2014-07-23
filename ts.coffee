@@ -1,5 +1,5 @@
 ###
-ts.js - version 0.9.0
+ts.js - version 0.9.1
 
 Copyright 2012 Dan Simpson, Mike Countis
 
@@ -258,12 +258,33 @@ class Timeseries
         r2.push(tv)
     [new @constructor(r1), new @constructor(r2)]
 
+  # Break data into windows of a given duration, returning
+  # a timeseries of timeseries objects
+  partition: (duration) ->
+    time   = @start() - (@start() % duration)
+    result = []
+    chunk  = []
+    for [t, v] in @data
+      while t - time >= duration
+        result.push [time, factory.build(chunk)]
+        chunk = []
+        time += duration
+      chunk.push [t, v]
+
+    if chunk.length > 0
+      result.push [time, factory.build(chunk)]
+
+    # TODO: bind to parent and emit?
+    factory.wrap(result, false)
 
   map: (fn) ->
     r = []
     for tv in @data
       r.push fn(tv[0], tv[1])
-    new @constructor(r)
+    factory.build(r)
+
+  pfold: (duration, fn) ->
+    @partition(duration).map(fn)
 
   # timestamps as 1d array
   timestamps: () ->
@@ -413,12 +434,28 @@ class NumericTimeseries extends Timeseries
     return @_valuesSorted if @_valuesSorted
     @_valuesSorted = @values().sort((a, b) -> a - b)
 
+  quartiles: () ->
+    min: @min()
+    p25: @p25th()
+    mid: @median()
+    p75: @p75th()
+    max: @max()
+
+  p25th: () ->
+    @percentile(0.25)
+
+  p75th: () ->
+    @percentile(0.75)
+
   median: () ->
-    half = Math.floor(@size() / 2)
+    @percentile(0.5)
+
+  percentile: (p) ->
+    idx = Math.floor(@size() * p)
     if @size() % 2
-      @valuesSorted()[half]
+      @valuesSorted()[idx]
     else
-      (@valuesSorted()[half - 1] + @valuesSorted()[half]) / 2
+      (@valuesSorted()[idx - 1] + @valuesSorted()[idx]) / 2
 
   # takes a duration and function.  The function must 
   # accept a timestamp and data array parameter
@@ -453,7 +490,6 @@ class NumericTimeseries extends Timeseries
       , duration
 
     rollup
-
 
   # normalized values as 1d array
   norms: () ->
@@ -602,6 +638,9 @@ class MultiTimeseries extends Timeseries
       throw "Can't get attribute #{name} of multi time series"
     @lookup[name]
 
+  get: (name) ->
+    @series(name)
+
   slide: (t, v) ->
     for key, value of v
       @lookup[key].slide(t, value)
@@ -628,6 +667,19 @@ class MultiTimeseries extends Timeseries
   serieses: () ->
     @attrs
 
+  # minimum of value
+  min: () ->
+    mins = []
+    for key, value of @lookup
+      mins.push(value.min())
+    Math.min.apply(Math, mins)
+
+  # maximum of values
+  max: () ->
+    maxes = []
+    for key, value of @lookup
+      maxes.push(value.max())
+    Math.max.apply(Math, maxes)
 
 # expose the factory
 root = if typeof module != "undefined" && module.exports
