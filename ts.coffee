@@ -261,7 +261,7 @@ class Timeseries
   # Break data into windows of a given duration, returning
   # a timeseries of timeseries objects
   partition: (duration) ->
-    time   = @start() - (@start() % duration)
+    time = @start() - Math.abs(@start() % duration)
     result = []
     chunk  = []
     for [t, v] in @data
@@ -295,8 +295,13 @@ class Timeseries
  
   # finds the nearest index in the domain using
   # a binary search
-  nearest: (timestamp) ->
-    @bsearch(timestamp, 0, @size() - 1)
+  # +timestamp+ the time to search for
+  # +lbound+ if true, the index will always justify to the past
+  nearest: (timestamp, lbound=false) ->
+    idx = @bsearch(timestamp, 0, @size() - 1)
+    if lbound && @time(idx) > timestamp
+      idx = Math.max(0, idx - 1)
+    idx
 
   # binary search for a timestamp with some fuzzy
   # matching if we don't get the exact idx
@@ -456,40 +461,6 @@ class NumericTimeseries extends Timeseries
       @valuesSorted()[idx]
     else
       (@valuesSorted()[idx - 1] + @valuesSorted()[idx]) / 2
-
-  # takes a duration and function.  The function must 
-  # accept a timestamp and data array parameter
-  # eg: function(time, values) { return mean(values) } and return a single value
-  rollup: (duration, fn, stream=false) ->
-
-    time   = @start() - (@start() % duration)
-    result = []
-    chunk  = []
-    for [t, v] in @data
-      while t - time >= duration
-        result.push [time, fn(time, chunk)]
-        chunk = []
-        time += duration
-      chunk.push [v]
-
-
-    if chunk.length > 0
-      result.push [time, fn(time, chunk)]
-
-    rollup = factory.build(result)
-
-    # a streaming rollup will push data to rolled up
-    # stream as it's emitted from the source stream
-    if stream
-      time += duration
-      setInterval () =>
-        chunk = @scan(time, time + duration)
-        if chunk.size() > 0
-          rollup.slide(time, fn(time, chunk))
-        time += duration
-      , duration
-
-    rollup
 
   # normalized values as 1d array
   norms: () ->

@@ -347,7 +347,7 @@ MIT License: http://opensource.org/licenses/MIT
 
     Timeseries.prototype.partition = function(duration) {
       var chunk, result, t, time, v, _i, _len, _ref, _ref1;
-      time = this.start() - (this.start() % duration);
+      time = this.start() - Math.abs(this.start() % duration);
       result = [];
       chunk = [];
       _ref = this.data;
@@ -392,8 +392,16 @@ MIT License: http://opensource.org/licenses/MIT
       return r;
     };
 
-    Timeseries.prototype.nearest = function(timestamp) {
-      return this.bsearch(timestamp, 0, this.size() - 1);
+    Timeseries.prototype.nearest = function(timestamp, lbound) {
+      var idx;
+      if (lbound == null) {
+        lbound = false;
+      }
+      idx = this.bsearch(timestamp, 0, this.size() - 1);
+      if (lbound && this.time(idx) > timestamp) {
+        idx = Math.max(0, idx - 1);
+      }
+      return idx;
     };
 
     Timeseries.prototype.bsearch = function(timestamp, idx1, idx2) {
@@ -604,42 +612,6 @@ MIT License: http://opensource.org/licenses/MIT
       } else {
         return (this.valuesSorted()[idx - 1] + this.valuesSorted()[idx]) / 2;
       }
-    };
-
-    NumericTimeseries.prototype.rollup = function(duration, fn, stream) {
-      var chunk, result, rollup, t, time, v, _i, _len, _ref, _ref1,
-        _this = this;
-      if (stream == null) {
-        stream = false;
-      }
-      time = this.start() - (this.start() % duration);
-      result = [];
-      chunk = [];
-      _ref = this.data;
-      for (_i = 0, _len = _ref.length; _i < _len; _i++) {
-        _ref1 = _ref[_i], t = _ref1[0], v = _ref1[1];
-        while (t - time >= duration) {
-          result.push([time, fn(time, chunk)]);
-          chunk = [];
-          time += duration;
-        }
-        chunk.push([v]);
-      }
-      if (chunk.length > 0) {
-        result.push([time, fn(time, chunk)]);
-      }
-      rollup = factory.build(result);
-      if (stream) {
-        time += duration;
-        setInterval(function() {
-          chunk = _this.scan(time, time + duration);
-          if (chunk.size() > 0) {
-            rollup.slide(time, fn(time, chunk));
-          }
-          return time += duration;
-        }, duration);
-      }
-      return rollup;
     };
 
     NumericTimeseries.prototype.norms = function() {

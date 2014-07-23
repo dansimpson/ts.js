@@ -143,9 +143,9 @@ runner.test "sorted values", () ->
   runner.assertEqual 1, ts.valuesSorted()[0]
   runner.assertEqual 6, ts.valuesSorted()[ts.valuesSorted().length - 1]
 
-runner.test "rollup", () ->
-  fn = (time, values) -> Math.min.apply(Math, values)
-  mins = ts.rollup(120000, fn)
+runner.test "pfold", () ->
+  fn = (time, ts) -> [time, ts.min()]
+  mins = ts.pfold(120000, fn)
   runner.assertEqual [1,3,4,4], mins.values()
 
 runner.test "simplify", () ->
