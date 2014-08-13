@@ -110,6 +110,21 @@ class Timeseries
   count: () -> 
     @data.length
 
+  # given a range of timestamps, find the nearest indices
+  # for slicing
+  slice_indices: (t1, t2) ->
+    idx1 = @nearest(t1)
+    idx2 = @nearest(t2)
+    # don't include a value not in range
+    if @time(idx1) < t1
+      ++idx1
+    # slice goes up to, but doesn't include, so only
+    # add if the nearest is less than
+    if @time(idx2) < t2
+      ++idx2
+
+    [idx1, idx2]
+
   # the first sample
   first: () ->
     @data[0]
@@ -224,18 +239,7 @@ class Timeseries
   # scan timeseries and get the range of events between
   # time nearest values of t1 and time t2
   scan: (t1, t2) ->
-    idx1 = @nearest(t1)
-    idx2 = @nearest(t2)
-
-    # don't include a value not in range
-    if @time(idx1) < t1
-      ++idx1
-
-    # slice goes up to, but doesn't include, so only
-    # add if the nearest is less than
-    if @time(idx2) < t2
-      ++idx2
-
+    [idx1, idx2] = @slice_indices(t1, t2)
     new @constructor(@data.slice(idx1, idx2))
 
   # filter out items and return new
@@ -298,6 +302,11 @@ class Timeseries
   # +timestamp+ the time to search for
   # +lbound+ if true, the index will always justify to the past
   nearest: (timestamp, lbound=false) ->
+    if timestamp <= @start()
+      return 0
+    if timestamp >= @end()
+      return @size() - 1
+
     idx = @bsearch(timestamp, 0, @size() - 1)
     if lbound && @time(idx) > timestamp
       idx = Math.max(0, idx - 1)

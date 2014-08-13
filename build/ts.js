@@ -158,6 +158,19 @@ MIT License: http://opensource.org/licenses/MIT
       return this.data.length;
     };
 
+    Timeseries.prototype.slice_indices = function(t1, t2) {
+      var idx1, idx2;
+      idx1 = this.nearest(t1);
+      idx2 = this.nearest(t2);
+      if (this.time(idx1) < t1) {
+        ++idx1;
+      }
+      if (this.time(idx2) < t2) {
+        ++idx2;
+      }
+      return [idx1, idx2];
+    };
+
     Timeseries.prototype.first = function() {
       return this.data[0];
     };
@@ -304,15 +317,8 @@ MIT License: http://opensource.org/licenses/MIT
     };
 
     Timeseries.prototype.scan = function(t1, t2) {
-      var idx1, idx2;
-      idx1 = this.nearest(t1);
-      idx2 = this.nearest(t2);
-      if (this.time(idx1) < t1) {
-        ++idx1;
-      }
-      if (this.time(idx2) < t2) {
-        ++idx2;
-      }
+      var idx1, idx2, _ref;
+      _ref = this.slice_indices(t1, t2), idx1 = _ref[0], idx2 = _ref[1];
       return new this.constructor(this.data.slice(idx1, idx2));
     };
 
@@ -396,6 +402,12 @@ MIT License: http://opensource.org/licenses/MIT
       var idx;
       if (lbound == null) {
         lbound = false;
+      }
+      if (timestamp <= this.start()) {
+        return 0;
+      }
+      if (timestamp >= this.end()) {
+        return this.size() - 1;
       }
       idx = this.bsearch(timestamp, 0, this.size() - 1);
       if (lbound && this.time(idx) > timestamp) {
