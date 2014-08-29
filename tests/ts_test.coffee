@@ -13,23 +13,6 @@ runner.test "index data", () ->
 
 ############################
 
-runner.describe "buffer"
-
-runner.test "build", () ->
-  runner.assertEqual "Buffer", $ts.buffer().constructor.name
-
-runner.test "append", () ->
-  buf = $ts.buffer()
-  buf.append([0, 5])
-  runner.assertEqual 1, buf.size()
-
-runner.test "shift", () ->
-  buf = $ts.buffer()
-  buf.append([[0, 5], [1, 6]])
-  runner.assertEqual 2, buf.size()
-  runner.assertEqual [0, 5], buf.shift(1)[0]
-  runner.assertEqual [1, 6], buf.data[0]
-
 runner.describe "basic timeseries"
 
 time = 0
@@ -59,16 +42,16 @@ runner.test "append", () ->
   runner.assertEqual size + 1, ts.size()
   runner.assertEqual 15, ts.last()[1]
 
-runner.test "shift", () ->
-  size = ts.size()
-  ts.shift()
-  runner.assertEqual size - 1, ts.size()
+runner.test "append with limit", () ->
+  limited = $ts.wrap(data).limit(120000)
+  limited.append 600000, 15
+  runner.assertEqual 2, limited.size()
 
 runner.test "split", () ->
   [t1, t2] = ts.split(300000)  
   runner.assertEqual ts.size(), t1.size() + t2.size()
-  runner.assertEqual 5, t1.size()
-  runner.assertEqual 2, t2.size()
+  runner.assertEqual 6, t1.size()
+  runner.assertEqual 3, t2.size()
 
 runner.test "notify", () ->
   x = false

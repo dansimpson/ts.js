@@ -1,5 +1,5 @@
 ###
-ts.js - version 0.9.1
+ts.js - version 0.9.2
 
 Copyright 2012 Dan Simpson, Mike Countis
 
@@ -63,31 +63,7 @@ class TimeseriesFactory
     else
       @multi(data)
 
-  buffer: (data=[]) ->
-    new Buffer(data)
-
 factory = new TimeseriesFactory()
-
-# Small buffer class used for limiting the rate of appending
-class Buffer
-  constructor: (@data=[]) ->
-
-  append: (data) ->
-    unless data instanceof Array
-      throw "Buffer.append expects array: [t,v] or [[t,v],[t,v]]"
-    
-    if data[0] instanceof Array
-      @data = @data.concat(data)
-    else
-      @data.push data
-
-  shift: (count) ->
-    result = @data.slice(0, count)
-    @data  = @data.slice(count, @size())
-    result
-
-  size: () ->
-    @data.length
 
 ###
 #
@@ -97,6 +73,7 @@ class Timeseries
   constructor: (@data) ->
     @squelched = false
     @listeners = []
+    @timeframe = null
 
   # the number of samples
   size: () -> 
@@ -125,6 +102,24 @@ class Timeseries
 
     [idx1, idx2]
 
+  # limit the total duration, or time frame of the
+  # time series
+  limit: (duration) ->
+    @timeframe = duration
+    @
+
+  # If timeframe is set, trim head of series
+  behead: () ->
+    if @timeframe == null
+      return []
+    min = @end() - @timeframe
+    count = 0
+    while @data[count][0] < min
+      count++
+    head = @data.slice(0, count)
+    @data = @data.slice(count)
+    head
+
   # the first sample
   first: () ->
     @data[0]
@@ -149,26 +144,12 @@ class Timeseries
   domain: () ->
     [@first()[0], @last()[0]]
 
-  # shift the first item off the list and update stats
-  shift: () ->
-    shift = @data.shift()
-    @notify()
-    shift
-
-  slide: (t, v) ->
-    shift = @data.shift()
-    @append(t, v)
-    shift
-
-  # see shift
-  pop: () ->
-    @shift()
-
   # append another timerseries item
   append: (t, v) ->
     if t < @end()
       throw "Can't append sample with past timestamp"
     @data.push [t, v]
+    @behead()
     @notify()
 
   # see append
@@ -179,38 +160,10 @@ class Timeseries
   add: (t, v) ->
     @append(t, v)
 
-  # push a value, and pop the head if the size > limit (0=no limit)
-  pushpop: (t, v, limit=0) ->
-    @squelched = true
-    @append(t, v)
-    if limit > 0
-      while @size() > limit
-        @shift()
-    @squelched = false
-    @notify()
-
-  # create a streaming buffer which limits the rate
-  # at which points are added to the data set
-  streambuf: (pps=60, maxEvents=0) ->
-    @buffer = $ts.buffer()
-    @interval = setInterval () =>
-      return if @buffer.size() == 0
-      @squelched = true
-      for [t, v] in @buffer.shift(Math.ceil(@buffer.size() / pps))
-        @append(t, v)
-      if @size() > maxEvents
-        for x in [0..(@size() - maxEvents)]
-          @shift()
-      @squelched = false
-      @notify()
-    , 1000 / pps
-    @buffer
-
   # notify listeners of a change
   notify: () ->
     if @squelched
       return
-
     for listener in @listeners
       listener()
 
@@ -281,12 +234,15 @@ class Timeseries
     # TODO: bind to parent and emit?
     factory.wrap(result, false)
 
+  # map each series tuple to a new tuple via function call
   map: (fn) ->
     r = []
     for tv in @data
       r.push fn(tv[0], tv[1])
     factory.build(r)
 
+  # partition by duration and fold each partitioned sub-series
+  # into a new value
   pfold: (duration, fn) ->
     @partition(duration).map(fn)
 
@@ -367,23 +323,18 @@ class NumericTimeseries extends Timeseries
       max : max
 
   # shift the first item off the list and update stats
-  shift: () ->
-    first = @data.shift()
-    v = first[1]
-    if @_stats
+  behead: () ->
+    head = super()
+
+    if head.length == 0 || !@_stats
+      return
+
+    for [t, v] in head
       @_stats.sum -= v
-      if v == @_stats.min
-        min = Infinity
-        for [t, v] in @data
-          min = Math.min(v, min)
-        @_stats.min = min
-      if v == @_stats.max
-        max = -Infinity
-        for [t, v] in @data
-          max = Math.max(v, max)
-        @_stats.max = max
-    @notify()
-    first
+      # if we have the min, or max... just purge the cache
+      if v == @_stats.min || v == @_stats.max
+        @_stats = false
+        return
 
   # append another timerseries item, updating calcs
   append: (t, v) ->
@@ -621,10 +572,10 @@ class MultiTimeseries extends Timeseries
   get: (name) ->
     @series(name)
 
-  slide: (t, v) ->
-    for key, value of v
-      @lookup[key].slide(t, value)
-    super(t, v)
+  limit: (duration) ->
+    super(duration)
+    for name, ts of @lookup
+      ts.limit(duration)
 
   append: (t, v) ->
     for key, value of v
@@ -634,12 +585,6 @@ class MultiTimeseries extends Timeseries
         @lookup[key] = factory.build([[t, value]])
         @attrs.push(key)
     super(t, v)
-
-  # TODO: Move to a fixed "window"
-  shift: () ->
-    for attr in @attrs
-      @lookup[attr].shift()
-    super()
 
   attr: (name) ->
     @series(name)
