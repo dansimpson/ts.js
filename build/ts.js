@@ -772,12 +772,12 @@ MIT License: http://opensource.org/licenses/MIT
         parts = name.split("/");
         head = parts.shift();
         if (!this.lookup[head]) {
-          throw "Can't get attribute " + head + " of multi time series";
+          return null;
         }
         return this.lookup[head].series(parts.join("/"));
       }
       if (!this.lookup[name]) {
-        throw "Can't get attribute " + name + " of multi time series";
+        return null;
       }
       return this.lookup[name];
     };
@@ -847,6 +847,10 @@ MIT License: http://opensource.org/licenses/MIT
         maxes.push(value.max());
       }
       return Math.max.apply(Math, maxes);
+    };
+
+    MultiTimeseries.prototype.exists = function(name) {
+      return this.series(name) !== null;
     };
 
     return MultiTimeseries;

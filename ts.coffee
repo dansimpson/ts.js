@@ -610,12 +610,12 @@ class MultiTimeseries extends Timeseries
       parts = name.split("/")
       head  = parts.shift()
       unless @lookup[head]
-        throw "Can't get attribute #{head} of multi time series"
+        return null
       return @lookup[head].series(parts.join("/"))
 
     # base case...
     unless @lookup[name]
-      throw "Can't get attribute #{name} of multi time series"
+      return null
     @lookup[name]
 
   get: (name) ->
@@ -660,6 +660,11 @@ class MultiTimeseries extends Timeseries
     for key, value of @lookup
       maxes.push(value.max())
     Math.max.apply(Math, maxes)
+
+  # determine if a series exists by name
+  exists: (name) ->
+    @series(name) != null
+
 
 # expose the factory
 root = if typeof module != "undefined" && module.exports
