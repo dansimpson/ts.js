@@ -14,7 +14,7 @@ class TimeseriesFactory
   validate: (data) ->
     if data.length == 0
       throw "Timeseries expects an array of data."
-    
+
     if data[0].length != 2
       throw "Timeseries expects input like [[timestamp, value]...]"
 
@@ -73,18 +73,22 @@ class Timeseries
   constructor: (@data) ->
     @squelched = false
     @listeners = []
+    @init_listeners = []
     @timeframe = null
 
   # the number of samples
-  size: () -> 
+  size: () ->
     @data.length
+
+  empty: () ->
+    @data.length == 0
 
   # the number of samples
   length: () ->
     @data.length
 
   # the number of samples
-  count: () -> 
+  count: () ->
     @data.length
 
   # given a range of timestamps, find the nearest indices
@@ -146,9 +150,15 @@ class Timeseries
 
   # append another timerseries item
   append: (t, v) ->
+    if @empty()
+      @data.push [t, v]
+      return
+
     if t < @end()
       throw "Can't append sample with past timestamp"
+
     @data.push [t, v]
+
     @behead()
     @notify()
 
@@ -164,11 +174,19 @@ class Timeseries
   notify: () ->
     if @squelched
       return
+
+    if @size() == 2
+      for listener in @init_listeners
+        listener()
+
     for listener in @listeners
       listener()
 
   listen: (fn) ->
     @listeners.push(fn)
+
+  on_init: (fn) ->
+    @init_listeners.push(fn)
 
   # values as 1d array
   values: () ->
@@ -252,7 +270,7 @@ class Timeseries
     for [t, v] in @data
       r.push t
     r
- 
+
   # finds the nearest index in the domain using
   # a binary search
   # +timestamp+ the time to search for
@@ -297,7 +315,7 @@ class Timeseries
 # A class for wrapping timed values
 #
 # data: a 2d array containing
-# 
+#
 ###
 class NumericTimeseries extends Timeseries
   constructor: (@data) ->
@@ -305,7 +323,7 @@ class NumericTimeseries extends Timeseries
 
   statistics: () ->
     return @_stats if @_stats
-    
+
     sum  = 0.0
     min  = Infinity
     max  = -Infinity
@@ -434,7 +452,7 @@ class NumericTimeseries extends Timeseries
   # then we will not reduce much
   # Todo: Douglas Peuker
   simplify: (threshold=0.1) ->
-    
+
     last  = @first()
     range = (@max() - @min())
 
@@ -473,9 +491,9 @@ class NumericTimeseries extends Timeseries
       if distance < best
         best = distance
         idx = i
-      
+
     idx
-      
+
   # Euclidean distance function for one timeseries on another
   # used for pattern searching
   _distance: (ts1, ts2) ->
@@ -545,7 +563,7 @@ class MultiTimeseries extends Timeseries
           @lookup[key] = []
           @attrs.push(key)
         @lookup[key].push([point[0], value])
-    
+
     # Convert array to ts oject, nested if need be
     for key, value of @lookup
       @lookup[key] = factory.build(@lookup[key])
