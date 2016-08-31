@@ -557,7 +557,7 @@ class MultiTimeseries extends Timeseries
     @attrs = []
 
     # add items to each sub array
-    for point in data
+    for point in @data
       for key, value of point[1]
         unless @lookup.hasOwnProperty(key)
           @lookup[key] = []
@@ -613,15 +613,15 @@ class MultiTimeseries extends Timeseries
   # minimum of value
   min: () ->
     mins = []
-    for key, value of @lookup
-      mins.push(value.min())
+    for key, series of @lookup when series.min
+      mins.push(series.min())
     Math.min.apply(Math, mins)
 
   # maximum of values
   max: () ->
     maxes = []
-    for key, value of @lookup
-      maxes.push(value.max())
+    for key, series of @lookup when series.max
+      maxes.push(series.max())
     Math.max.apply(Math, maxes)
 
   # determine if a series exists by name
